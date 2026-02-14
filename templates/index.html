@@ -13,7 +13,7 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -28,7 +28,7 @@
         }
         
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
             padding: 30px;
             text-align: center;
@@ -70,7 +70,7 @@
         }
         
         .upload-area {
-            border: 3px dashed #667eea;
+            border: 3px dashed #10b981;
             border-radius: 15px;
             padding: 40px 20px;
             text-align: center;
@@ -80,13 +80,13 @@
         }
         
         .upload-area:hover {
-            border-color: #764ba2;
-            background: #f0f0ff;
+            border-color: #059669;
+            background: #f0fdf4;
         }
         
         .upload-area.dragover {
-            background: #e8e8ff;
-            border-color: #764ba2;
+            background: #dcfce7;
+            border-color: #059669;
         }
         
         .upload-icon {
@@ -118,7 +118,7 @@
         
         textarea:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #10b981;
         }
         
         .settings {
@@ -148,7 +148,7 @@
         }
         
         .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
             border: none;
             padding: 15px 30px;
@@ -162,7 +162,7 @@
         
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
         }
         
         .btn:disabled {
@@ -172,7 +172,7 @@
         }
         
         .btn-secondary {
-            background: #28a745;
+            background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
             margin-top: 15px;
         }
         
@@ -184,13 +184,13 @@
         }
         
         .preview-content h2 {
-            color: #667eea;
+            color: #10b981;
             margin-top: 20px;
             margin-bottom: 10px;
         }
         
         .preview-content h3 {
-            color: #764ba2;
+            color: #059669;
             margin-top: 15px;
             margin-bottom: 8px;
         }
@@ -207,12 +207,12 @@
         .loading {
             text-align: center;
             padding: 40px;
-            color: #667eea;
+            color: #10b981;
         }
         
         .spinner {
             border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
+            border-top: 4px solid #10b981;
             border-radius: 50%;
             width: 50px;
             height: 50px;
@@ -257,7 +257,7 @@
     <div class="container">
         <div class="header">
             <h1>🧶 Crochet Pattern Generator</h1>
-            <p>Upload an image or describe what you want to crochet</p>
+            <p>Upload an image and add details to create your custom pattern</p>
         </div>
         
         <div class="main-content">
@@ -274,11 +274,12 @@
                     <div id="imagePreview" style="margin-top: 15px; text-align: center;"></div>
                 </div>
                 
-                <div class="divider">— OR —</div>
-                
                 <div class="section">
-                    <div class="section-title">✍️ Describe Your Pattern</div>
-                    <textarea id="promptInput" placeholder="Example: A cute blue octopus with 8 legs and a smile"></textarea>
+                    <div class="section-title">✍️ Add Details (Optional)</div>
+                    <textarea id="promptInput" placeholder="Add any additional details: colors, size adjustments, special features..."></textarea>
+                    <p style="font-size: 0.85em; color: #666; margin-top: 8px;">
+                        💡 Tip: Combine image + text for best results! Example: "Make it blue with longer arms"
+                    </p>
                 </div>
                 
                 <div class="section">
@@ -362,8 +363,9 @@
             const promptText = document.getElementById('promptInput').value.trim();
             const patternName = document.getElementById('patternName').value.trim();
             
+            // Both image and text are now acceptable, independently or together
             if (!imageFile && !promptText) {
-                showError('Please upload an image or enter a description');
+                showError('Please upload an image and/or enter additional details');
                 return;
             }
             

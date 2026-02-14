@@ -30,12 +30,17 @@ def index():
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze():
-    """Analyze image or text prompt and return pattern data"""
+    """Analyze image and/or text prompt and return pattern data"""
     try:
         pattern_data = []
+        has_image = 'image' in request.files and request.files['image'].filename
+        has_prompt = 'prompt' in request.form and request.form['prompt'].strip()
         
-        # Check if it's an image upload or text prompt
-        if 'image' in request.files and request.files['image'].filename:
+        if not has_image and not has_prompt:
+            return jsonify({'error': 'Please provide either an image, text description, or both'}), 400
+        
+        # Build the AI prompt
+        if has_image:
             # Image upload path
             file = request.files['image']
             if file and allowed_file(file.filename):
@@ -43,15 +48,58 @@ def analyze():
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 file.save(filepath)
                 
-                # Analyze with vision AI
+                # Create enhanced prompt if text is also provided
+                additional_context = ""
+                if has_prompt:
+                    additional_context = f"\n\nAdditional context from user: {request.form['prompt'].strip()}"
+                
                 analyzer = VisionAnalyzer()
-                pattern_data = analyzer.analyze_image(filepath)
+                
+                # Enhanced analysis with both image and text
+                base_prompt = """You are a crochet pattern expert. Analyze this image of a crochet amigurumi and identify its components.
+
+For EACH visible part, describe:
+1. Shape type: sphere (round/ball), cylinder (tube/column), cone (pointy/tapered), or flat_leaf (flat/thin)
+2. Part name (e.g., "Head", "Body", "Leg", "Ear", "Tail")
+3. Color
+4. Approximate size (small/medium/large)"""
+                
+                if has_prompt:
+                    base_prompt += additional_context
+                
+                base_prompt += """
+
+Return ONLY a JSON array like this (no other text):
+[
+  {"type": "sphere", "name": "Head & Body", "color": "Green", "size": "large"},
+  {"type": "cone", "name": "Tail", "color": "Green", "size": "medium"}
+]
+
+Be specific and list ALL visible parts."""
+                
+                response = ollama.chat(
+                    model='llava',
+                    messages=[{
+                        'role': 'user',
+                        'content': base_prompt,
+                        'images': [filepath]
+                    }]
+                )
+                
+                response_text = response['message']['content']
+                
+                # Parse JSON
+                start_idx = response_text.find('[')
+                end_idx = response_text.rfind(']') + 1
+                if start_idx != -1 and end_idx > 0:
+                    json_str = response_text[start_idx:end_idx]
+                    vision_data = json.loads(json_str)
+                    pattern_data = analyzer._convert_to_pattern_format(vision_data)
         
-        elif 'prompt' in request.form and request.form['prompt'].strip():
-            # Text prompt path
+        elif has_prompt:
+            # Text-only path
             prompt = request.form['prompt'].strip()
             
-            # Use Ollama to generate pattern from text description
             system_prompt = """You are a crochet pattern expert. Based on the user's description, identify the components needed.
 
 Return ONLY a JSON array like this (no other text):
@@ -82,9 +130,6 @@ Sizes: small, medium, large"""
                 
                 analyzer = VisionAnalyzer()
                 pattern_data = analyzer._convert_to_pattern_format(vision_data)
-        
-        else:
-            return jsonify({'error': 'Please provide either an image or a text description'}), 400
         
         if not pattern_data:
             return jsonify({'error': 'Could not analyze the input. Please try again.'}), 400
