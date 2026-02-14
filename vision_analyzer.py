@@ -24,23 +24,45 @@ class VisionAnalyzer:
             [{"type": "sphere", "name": "Body", "color": "Blue", ...}, ...]
         """
         
-        # Create the analysis prompt
-        prompt = """You are a crochet pattern expert. Analyze this image of a crochet amigurumi and identify its components.
+        # Enhanced analysis prompt with more shape types
+        prompt = """You are an expert crochet pattern designer analyzing amigurumi images.
 
-For EACH visible part, describe:
-1. Shape type: sphere (round/ball), cylinder (tube/column), cone (pointy/tapered), or flat_leaf (flat/thin)
-2. Part name (e.g., "Head", "Body", "Leg", "Ear", "Tail")
-3. Color
-4. Approximate size (small/medium/large)
+IMPORTANT: Identify EVERY visible component, including small details.
 
-Return ONLY a JSON array like this (no other text):
+For EACH part, identify:
+1. **Shape type** (choose the BEST match):
+   - sphere: Round/ball shapes (heads, bodies, balls)
+   - cylinder: Tube/column shapes (legs, arms, necks, tails if tubular)
+   - cone: Pointy/tapered shapes (ears, horns, pointed tails)
+   - flat_leaf: Simple flat pieces (basic leaves, scarves)
+   - heart_leaf: Heart-shaped or organic leaves (Monstera, fancy leaves)
+   - wing: Triangular/bat-wing shapes with pointed edges
+   - petals: Small loops attached to a circular base (flowers)
+   - spikes: Tiny triangular protrusions (dinosaur spikes, ridges)
+
+2. **Part name**: Be specific (e.g., "Head & Body combined", "Left Arm", "Back Spike")
+
+3. **Color**: Actual color name
+
+4. **Size**: small, medium, or large (relative to the whole figure)
+
+5. **Count**: How many of this part? (e.g., "2" for two arms, "8" for octopus legs)
+
+CRITICAL RULES:
+- Look carefully at WINGS - they have jagged/pointed edges
+- PETALS are loops around a circular center
+- SPIKES are tiny triangles on backs/heads
+- If a leaf has HEART shape or organic curves, use "heart_leaf" not "flat_leaf"
+- Combine head+body into ONE piece if they're the same color
+
+Return ONLY valid JSON (no markdown, no code blocks):
 [
-  {"type": "sphere", "name": "Head & Body", "color": "Green", "size": "large"},
-  {"type": "cone", "name": "Tail", "color": "Green", "size": "medium"},
-  {"type": "cylinder", "name": "Arm", "color": "Green", "size": "small"}
+  {"type": "sphere", "name": "Head & Body", "color": "Green", "size": "large", "count": 1},
+  {"type": "wing", "name": "Wing", "color": "Black", "size": "medium", "count": 2},
+  {"type": "spikes", "name": "Back Spike", "color": "Yellow", "size": "small", "count": 5}
 ]
 
-Be specific and list ALL visible parts."""
+Analyze carefully and list ALL visible parts."""
 
         print(f"Analyzing image: {image_path}")
         
@@ -86,47 +108,88 @@ Be specific and list ALL visible parts."""
         for part in vision_data:
             # Map size to actual stitch counts
             size = part.get('size', 'medium').lower()
+            count = part.get('count', 1)
+            part_type = part['type']
             
-            if part['type'] == 'sphere':
+            # Update name with count if > 1
+            part_name = part['name']
+            if count > 1:
+                part_name = f"{part_name} (Make {count})"
+            
+            if part_type == 'sphere':
                 max_stitches = {'small': 18, 'medium': 24, 'large': 30}.get(size, 24)
                 height = {'small': 3, 'medium': 5, 'large': 8}.get(size, 5)
                 pattern_parts.append({
                     "type": "sphere",
-                    "name": part['name'],
+                    "name": part_name,
                     "color": part['color'],
                     "max_stitches": max_stitches,
                     "height": height
                 })
             
-            elif part['type'] == 'cylinder':
+            elif part_type == 'cylinder':
                 width = {'small': 6, 'medium': 12, 'large': 18}.get(size, 12)
                 height = {'small': 3, 'medium': 6, 'large': 10}.get(size, 6)
                 pattern_parts.append({
                     "type": "cylinder",
-                    "name": part['name'],
+                    "name": part_name,
                     "color": part['color'],
                     "width": width,
                     "height": height
                 })
             
-            elif part['type'] == 'cone':
+            elif part_type == 'cone':
                 base = {'small': 8, 'medium': 12, 'large': 16}.get(size, 12)
                 height = {'small': 4, 'medium': 6, 'large': 8}.get(size, 6)
                 pattern_parts.append({
                     "type": "cone",
-                    "name": part['name'],
+                    "name": part_name,
                     "color": part['color'],
                     "base": base,
                     "height": height
                 })
             
-            elif part['type'] == 'flat_leaf':
+            elif part_type == 'flat_leaf':
                 length = {'small': 6, 'medium': 10, 'large': 15}.get(size, 10)
                 pattern_parts.append({
                     "type": "flat_leaf",
-                    "name": part['name'],
+                    "name": part_name,
                     "color": part['color'],
                     "length": length
+                })
+            
+            elif part_type == 'heart_leaf':
+                pattern_parts.append({
+                    "type": "heart_leaf",
+                    "name": part_name,
+                    "color": part['color'],
+                    "size": size
+                })
+            
+            elif part_type == 'wing':
+                pattern_parts.append({
+                    "type": "wing",
+                    "name": part_name,
+                    "color": part['color'],
+                    "size": size
+                })
+            
+            elif part_type == 'petals':
+                num = {'small': 6, 'medium': 8, 'large': 12}.get(size, 6)
+                pattern_parts.append({
+                    "type": "petals",
+                    "name": part_name,
+                    "color": part['color'],
+                    "num_petals": num,
+                    "attachment": "edge"
+                })
+            
+            elif part_type == 'spikes':
+                pattern_parts.append({
+                    "type": "spikes",
+                    "name": part_name,
+                    "color": part['color'],
+                    "num_spikes": count if count > 1 else 5
                 })
         
         return pattern_parts

@@ -176,6 +176,26 @@ def generate():
                     part["name"], part["color"],
                     part["length"]
                 )
+            elif part["type"] == "heart_leaf":
+                full_pattern += engine.generate_heart_leaf(
+                    part["name"], part["color"],
+                    part["size"]
+                )
+            elif part["type"] == "wing":
+                full_pattern += engine.generate_wing(
+                    part["name"], part["color"],
+                    part["size"]
+                )
+            elif part["type"] == "petals":
+                full_pattern += engine.generate_petals(
+                    part["name"], part["color"],
+                    part["num_petals"], part["attachment"]
+                )
+            elif part["type"] == "spikes":
+                full_pattern += engine.generate_spikes(
+                    part["name"], part["color"],
+                    part["num_spikes"]
+                )
         
         # Convert markdown to HTML for preview
         html_pattern = markdown_to_html(full_pattern)

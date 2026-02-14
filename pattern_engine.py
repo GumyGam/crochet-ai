@@ -204,6 +204,78 @@ class BeginnerPatternGenerator:
         pattern.append("\n**Finish:** Fasten off. Leave a tail to sew it into the pot.\n")
         return "\n".join(pattern)
 
+    def generate_heart_leaf(self, name, color, size="medium"):
+        """Generates a heart-shaped leaf (Monstera style) with increases for width."""
+        pattern = []
+        pattern.append(f"### {name.upper()} (Use {color} yarn)")
+        pattern.append("*This leaf is worked in rows with chain spaces to create the heart shape.*\n")
+        
+        # Size mapping
+        base_chains = {"small": 2, "medium": 2, "large": 3}.get(size, 2)
+        
+        pattern.append(f"**Row 1:** Chain {base_chains}.")
+        pattern.append(f"**Row 2:** Inc in 2nd ch from hook, ch 1 and turn. ({base_chains} sts)")
+        pattern.append(f"**Row 3:** 2 inc, ch 1 and turn. (4 sts)")
+        pattern.append(f"**Row 4:** inc, 2 sc, inc, ch 3 and turn. (6 sts)")
+        pattern.append(f"**Row 5:** Skip 2 stitches, 2 sc, ch 3, skip 1 st, sl st, ch 1 and turn. (6 sts)")
+        pattern.append(f"   *TIP: The chain-3 spaces create the heart indent at top.*")
+        pattern.append(f"**Row 6:** Skip 1 st, 3 sc in ch-3 space, 2 sc, 3 sc in ch-3 space, ch 1 turn. (8 sts)")
+        pattern.append(f"**Row 7:** sc, hdc, dc, dc, hdc, sc around the edge.")
+        
+        pattern.append("\n**Finish:** Fasten off. Leave long tail for sewing.\n")
+        return "\n".join(pattern)
+
+    def generate_wing(self, name, color, size="medium"):
+        """Generates a triangular wing with jagged edges (Balrog style)."""
+        pattern = []
+        pattern.append(f"### {name.upper()} (Use {color} yarn)")
+        pattern.append("*Wings are worked in rows with increases to create a triangle shape.*\n")
+        
+        # Size determines base chain length
+        base_chains = {"small": 4, "medium": 5, "large": 6}.get(size, 5)
+        
+        pattern.append(f"**Row 1:** Chain {base_chains}.")
+        pattern.append(f"**Row 2:** sc in 2nd ch from hook, {base_chains-2} sc, ch 1 and turn. ({base_chains-1} sts)")
+        pattern.append(f"**Row 3:** inc, {base_chains-3} sc, inc, ch 1 and turn. ({base_chains+1} sts)")
+        pattern.append(f"**Row 4:** inc, {base_chains-1} sc, inc, ch 1 and turn. ({base_chains+3} sts)")
+        pattern.append(f"**Row 5:** inc, 2 sc, 2 inc, 2 sc, inc, ch 1 and turn. ({base_chains+7} sts)")
+        pattern.append(f"**Row 6:** 3 sc, picot, sc, 2 sl st, sc, picot, sc, sl st.")
+        pattern.append(f"   *TIP: Picot stitch = ch 3, sl st into 3rd ch from hook (creates spike).*")
+        
+        pattern.append("\n**Edge:** Work sc along sides of wing to create clean edges.")
+        pattern.append("**Finish:** Fasten off. Leave long tail for sewing to back.\n")
+        return "\n".join(pattern)
+
+    def generate_petals(self, name, color, num_petals=6, attachment="edge"):
+        """Generates petals that attach to an edge (Sunflower style)."""
+        pattern = []
+        pattern.append(f"### {name.upper()} (Use {color} yarn)")
+        pattern.append(f"*Petals are worked directly onto the edge. Make {num_petals} petals total.*\n")
+        
+        pattern.append(f"**Step 1:** Position your flower piece. Sl st join into edge stitch.")
+        pattern.append(f"**Step 2:** Ch 1, hdc in same stitch.")
+        pattern.append(f"**Step 3:** Hdc in next stitch.")
+        pattern.append(f"**Step 4:** Ch 1, sl st in same stitch as step 3.")
+        pattern.append(f"   *This creates ONE petal.*")
+        pattern.append(f"\n**Step 5:** Skip 1 or 2 stitches, then repeat Steps 1-4 for the next petal.")
+        pattern.append(f"**Step 6:** Repeat until you have {num_petals} petals evenly spaced around.")
+        
+        pattern.append("\n**Finish:** Fasten off and weave in ends.\n")
+        return "\n".join(pattern)
+
+    def generate_spikes(self, name, color, num_spikes=5):
+        """Generates small triangle spikes (like dinosaur back spikes)."""
+        pattern = []
+        pattern.append(f"### {name.upper()} (Use {color} yarn, Make {num_spikes})")
+        pattern.append("*Each spike is a tiny triangle.*\n")
+        
+        pattern.append(f"**Rnd 1:** Start 4 sc in magic loop. (4 sts)")
+        pattern.append(f"**Rnd 2:** [sc, inc] x 2. (6 sts)")
+        
+        pattern.append("\n**Finish:** Fasten off with long tail. Sew spikes along back, spacing evenly.\n")
+        return "\n".join(pattern)
+
+
 # --- SIMULATION 1: Fred the Dino ---
 fred_vision_output = [
     {"type": "sphere", "name": "Head & Body", "color": "Green", "max_stitches": 30, "height": 8},
