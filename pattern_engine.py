@@ -1,0 +1,274 @@
+import math
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+
+class BeginnerPatternGenerator:
+    def __init__(self):
+        self.abbreviations = {
+            "sc": "single crochet (US term)",
+            "inc": "increase (2 sc in one stitch)",
+            "dec": "decrease (sc 2 stitches together)",
+            "ch": "chain",
+            "sl st": "slip stitch",
+            "hdc": "half double crochet (US term)",
+            "dc": "double crochet (US term)",
+            "magic loop": "magic loop (or ch 2, and sc 6 times in 2nd ch from hook)"
+        }
+
+    def save_to_pdf(self, filename, content):
+        """Saves the pattern content to a PDF file."""
+        print(f"DEBUG: Saving PDF {filename}...")
+        c = canvas.Canvas(filename, pagesize=letter)
+        width, height = letter
+        
+        # Setup fonts
+        c.setFont("Helvetica", 12)
+        text_object = c.beginText(50, height - 50)
+        
+        # Simple markdown parsing for bold/headers
+        lines = content.split('\n')
+        for line in lines:
+            if line.startswith("# "): # H1
+                c.setFont("Helvetica-Bold", 18)
+                text_object.setFont("Helvetica-Bold", 18)
+                text_object.textLine(line.replace("# ", ""))
+                text_object.moveCursor(0, 10) # extra space
+                c.setFont("Helvetica", 12) # reset
+                text_object.setFont("Helvetica", 12)
+            elif line.startswith("## "): # H2
+                c.setFont("Helvetica-Bold", 14)
+                text_object.setFont("Helvetica-Bold", 14)
+                text_object.moveCursor(0, 5)
+                text_object.textLine(line.replace("## ", ""))
+                text_object.moveCursor(0, 5)
+                c.setFont("Helvetica", 12)
+                text_object.setFont("Helvetica", 12)
+            elif line.startswith("### "): # H3
+                c.setFont("Helvetica-Bold", 12)
+                text_object.setFont("Helvetica-Bold", 12)
+                text_object.textLine(line.replace("### ", ""))
+                c.setFont("Helvetica", 12)
+                text_object.setFont("Helvetica", 12)
+            elif line.startswith("**"): # Bold line start
+                c.setFont("Helvetica-Bold", 12)
+                text_object.setFont("Helvetica-Bold", 12)
+                text_object.textLine(line.replace("**", ""))
+                c.setFont("Helvetica", 12)
+                text_object.setFont("Helvetica", 12)
+            elif line.strip() == "---": # Separator
+                text_object.textLine("_" * 60)
+            else:
+                # Regular text
+                # clean up bold markers within line for now (simple approach)
+                clean_line = line.replace("**", "")
+                text_object.textLine(clean_line)
+            
+            # Check for page break
+            if text_object.getY() < 50:
+                c.drawText(text_object)
+                c.showPage()
+                text_object = c.beginText(50, height - 50)
+                text_object.setFont("Helvetica", 12)
+                
+        c.drawText(text_object)
+        c.save()
+        print(f"PDF saved as: {filename}")
+
+    def add_header(self):
+        header = "# YOUR CUSTOM CROCHET PATTERN\n"
+        header += "*Terminlogy: US Standard*\n\n"
+        header += "## 🧶 BEGINNER TIPS\n"
+        header += "- **Mark your rounds:** Use a stitch marker (or safety pin) in the first stitch of every round so you don't lose count.\n"
+        header += "- **Counting:** The number in (parentheses) at the end of each line is how many stitches you should have. Count them!\n"
+        header += "- **Magic Loop:** If the magic loop is too hard, you can 'Chain 2' and make 6 sc into the second chain from the hook.\n\n"
+        header += "## ABBREVIATIONS\n"
+        for abbr, desc in self.abbreviations.items():
+            header += f"- **{abbr}**: {desc}\n"
+        header += "\n---\n"
+        return header
+
+    def format_round(self, round_num, instruction, count, tip=None):
+        """Formats a single round with beginner tips."""
+        line = f"**Rnd {round_num}:** {instruction} ({count} sts)"
+        if tip:
+            line += f"\n   *💡 Tip: {tip}*"
+        return line
+
+    def generate_sphere(self, name, color, max_stitches=24, height_rows=5):
+        """Generates a beginner-friendly sphere pattern."""
+        pattern = []
+        pattern.append(f"### 🟢 {name.upper()} (Use {color} yarn)")
+        pattern.append("This piece is worked in continuous rounds. Do not join at the end of rounds.\n")
+        
+        # 1. Increase Phase
+        current_stitches = 6
+        pattern.append(self.format_round(1, "Start 6 sc in a magic loop", 6, "Pull the tail tight to close the hole!"))
+        
+        rnd = 2
+        while current_stitches < max_stitches:
+            if rnd == 2:
+                pattern.append(self.format_round(rnd, "inc in every stitch", 12))
+                current_stitches = 12
+            else:
+                sc_count = (current_stitches // 6) - 1
+                pattern.append(self.format_round(rnd, f"[sc {sc_count}, inc] repeat 6 times", current_stitches + 6))
+                current_stitches += 6
+            rnd += 1
+
+        # 2. Work Even Phase
+        pattern.append(self.format_round(f"{rnd} to {rnd + height_rows - 1}", "sc in every stitch around", current_stitches, "Just go round and round!"))
+        rnd += height_rows
+
+        # SAFETY EYES CHECKPOINT
+        if "Head" in name:
+            pattern.append("\n🛑 **STOP!** If you are using safety eyes, attach them now between Rnds 8 and 9.\n")
+
+        # 3. Decrease Phase
+        while current_stitches > 6:
+            sc_count = (current_stitches // 6) - 2
+            if sc_count > 0:
+                pattern.append(self.format_round(rnd, f"[sc {sc_count}, dec] repeat 6 times", current_stitches - 6))
+            else:
+                pattern.append(self.format_round(rnd, "dec 6 times", current_stitches - 6))
+            
+            if current_stitches == 12:
+                 pattern.append("   *☁️ Stuff the piece firmly with stuffing now!*")
+            
+            current_stitches -= 6
+            rnd += 1
+
+        pattern.append("\n**Finish:** Cut the yarn, leaving a long tail. Thread a needle and sew the hole closed.\n")
+        return "\n".join(pattern)
+
+    def generate_cylinder(self, name, color, width_stitches=12, height_rows=8):
+        """Generates a tube pattern."""
+        pattern = []
+        pattern.append(f"### 🦵 {name.upper()} (Use {color} yarn)")
+        
+        pattern.append(self.format_round(1, "Start 6 sc in a magic loop", 6))
+        
+        # Increase only if width > 6
+        current_stitches = 6
+        rnd = 2
+        while current_stitches < width_stitches:
+             pattern.append(self.format_round(rnd, "inc in every stitch", 12))
+             current_stitches = 12
+             rnd += 1
+
+        pattern.append(self.format_round(f"{rnd} to {rnd + height_rows - 1}", "sc in every stitch around", current_stitches))
+        
+        pattern.append("\n**Finish:** Fasten off. Leave a long tail for sewing it to the body. Stuff lightly.\n")
+        return "\n".join(pattern)
+
+    def generate_cone(self, name, color, base_stitches=12, height_rows=6):
+        """Generates a cone pattern."""
+        pattern = []
+        pattern.append(f"### 🔺 {name.upper()} (Use {color} yarn)")
+        
+        pattern.append(self.format_round(1, "Start 4 sc in a magic loop", 4))
+        current_stitches = 4
+        rnd = 2
+
+        target_rounds = height_rows
+        inc_interval = max(1, target_rounds // ((base_stitches - 4) // 2))
+
+        while rnd <= target_rounds + 1:
+            if current_stitches < base_stitches and (rnd % inc_interval == 0):
+                half = current_stitches // 2
+                pattern.append(self.format_round(rnd, f"[sc {half-1}, inc] repeat 2 times", current_stitches + 2))
+                current_stitches += 2
+            else:
+                pattern.append(self.format_round(rnd, "sc in every stitch", current_stitches))
+            rnd += 1
+
+        pattern.append("\n**Finish:** Fasten off. Leave a long tail. Stuff gently.\n")
+        return "\n".join(pattern)
+
+    def generate_flat_leaf(self, name, color, length_chains):
+        """Generates a simple flat leaf (Otis style)."""
+        pattern = []
+        pattern.append(f"### 🌿 {name.upper()} (Use {color} yarn)")
+        pattern.append("*This part is worked in rows, not rounds. You will turn your work at the end of each row.*")
+        
+        pattern.append(f"**Row 1:** Chain {length_chains}.")
+        pattern.append(f"**Row 2:** Start in 2nd chain from hook. sc {length_chains-1} down the chain. Chain 1, Turn.")
+        pattern.append(f"**Row 3:** sc {length_chains-1} back up. Chain 1, Turn.")
+        pattern.append(f"**Row 4:** sc {length_chains-1} back down.")
+        
+        pattern.append("\n**Finish:** Fasten off. Leave a tail to sew it into the pot.\n")
+        return "\n".join(pattern)
+
+# --- SIMULATION 1: Fred the Dino ---
+fred_vision_output = [
+    {"type": "sphere", "name": "Head & Body", "color": "Green", "max_stitches": 30, "height": 8},
+    {"type": "cone", "name": "Tail", "color": "Green", "base": 14, "height": 8},
+    {"type": "cylinder", "name": "Arm (Make 2)", "color": "Green", "width": 6, "height": 3},
+]
+
+# --- SIMULATION 2: Otis the Snake Plant ---
+otis_vision_output = [
+    {"type": "cylinder", "name": "Pot", "color": "Red", "width": 24, "height": 8},
+    {"type": "sphere", "name": "Dirt (Inside Pot)", "color": "Dark Brown", "max_stitches": 24, "height": 2},
+    {"type": "flat_leaf", "name": "Tall Leaf", "color": "Green/Dark Green", "length": 15},
+    {"type": "flat_leaf", "name": "Short Leaf", "color": "Green", "length": 10}
+]
+
+# --- SIMULATION 3: Ana the Sunflower (Simplified for now) ---
+ana_vision_output = [
+    {"type": "sphere", "name": "Flower Face (Make 2)", "color": "Brown", "max_stitches": 24, "height": 2},
+    {"type": "cylinder", "name": "Stem", "color": "Green", "width": 6, "height": 10},
+    {"type": "cylinder", "name": "Pot", "color": "Tan", "width": 24, "height": 6},
+    # Note: Petals are still tricky, represented as small leaves for now
+    {"type": "flat_leaf", "name": "Leaf (Make 2)", "color": "Green", "length": 8} 
+]
+
+# --- MAIN GENERATOR LOGIC ---
+if __name__ == "__main__":
+    engine = BeginnerPatternGenerator()
+    
+    print("Generating PDF patterns...")
+
+    # FRED
+    full_pattern = engine.add_header()
+    full_pattern += "## 🦖 FRED THE DINO\n\n"
+    for part in fred_vision_output:
+        if part["type"] == "sphere":
+            full_pattern += engine.generate_sphere(part["name"], part["color"], part["max_stitches"], part["height"])
+        elif part["type"] == "cylinder":
+            full_pattern += engine.generate_cylinder(part["name"], part["color"], part["width"], part["height"])
+        elif part["type"] == "cone":
+            full_pattern += engine.generate_cone(part["name"], part["color"], part["base"], part["height"])
+        elif part["type"] == "flat_leaf":
+             full_pattern += engine.generate_flat_leaf(part["name"], part["color"], part["length"])
+    engine.save_to_pdf("Fred_The_Dino_Pattern.pdf", full_pattern)
+
+    # OTIS
+    full_pattern = engine.add_header()
+    full_pattern += "## 🌿 OTIS THE SNAKE PLANT\n\n"
+    for part in otis_vision_output:
+        if part["type"] == "sphere":
+            full_pattern += engine.generate_sphere(part["name"], part["color"], part["max_stitches"], part["height"])
+        elif part["type"] == "cylinder":
+            full_pattern += engine.generate_cylinder(part["name"], part["color"], part["width"], part["height"])
+        elif part["type"] == "cone":
+            full_pattern += engine.generate_cone(part["name"], part["color"], part["base"], part["height"])
+        elif part["type"] == "flat_leaf":
+             full_pattern += engine.generate_flat_leaf(part["name"], part["color"], part["length"])
+    engine.save_to_pdf("Otis_The_Snake_Plant_Pattern.pdf", full_pattern)
+
+    # ANA
+    full_pattern = engine.add_header()
+    full_pattern += "## 🌻 ANA THE SUNFLOWER\n\n"
+    for part in ana_vision_output:
+        if part["type"] == "sphere":
+            full_pattern += engine.generate_sphere(part["name"], part["color"], part["max_stitches"], part["height"])
+        elif part["type"] == "cylinder":
+            full_pattern += engine.generate_cylinder(part["name"], part["color"], part["width"], part["height"])
+        elif part["type"] == "cone":
+            full_pattern += engine.generate_cone(part["name"], part["color"], part["base"], part["height"])
+        elif part["type"] == "flat_leaf":
+             full_pattern += engine.generate_flat_leaf(part["name"], part["color"], part["length"])
+    engine.save_to_pdf("Ana_The_Sunflower_Pattern.pdf", full_pattern)
+
+    print("Done! PDF files created.")
