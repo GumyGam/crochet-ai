@@ -16,12 +16,27 @@ source venv/bin/activate
 pip install fpdf2
 ```
 
-### 2. Download Ollama Vision Model
+## Usage
+
+### 🌐 Option 1: Web Interface (Recommended)
+The easiest way to use the generator!
+
 ```bash
-ollama pull llava
+source venv/bin/activate
+python3 app.py
 ```
 
-### 3. Generate a Pattern from an Image
+Then open your browser to: **http://localhost:5001**
+
+Features:
+- 📤 **Upload an image** OR ✍️ **describe what you want**
+- ⚙️ **Adjust settings** (pattern name, colors, sizes)
+- 👁️ **Live preview** in the same window
+- 📥 **Download PDF** with one click
+
+### 💻 Option 2: Command Line
+For automation or scripting:
+
 ```bash
 source venv/bin/activate
 python3 image_to_pattern.py path/to/your/image.jpg [optional_name]
@@ -32,21 +47,20 @@ python3 image_to_pattern.py path/to/your/image.jpg [optional_name]
 python3 image_to_pattern.py my_crochet_toy.png "My Custom Toy"
 ```
 
-### 4. Or Use Pre-Made Examples
-```bash
-python3 pattern_engine.py fred    # Generates Fred the Dino
-python3 pattern_engine.py otis    # Generates Otis the Snake Plant  
-python3 pattern_engine.py ana     # Generates Ana the Sunflower
-```
-
 ## Project Status
 
 ### ✅ Completed
-- **Step 1**: Pattern generation engine with 4 shape types ✅
-- **Step 2**: Ollama vision AI integration (llava model) ✅
-  - Analyzes images and identifies components
-  - Generates patterns in ~3-30 seconds depending on complexity
-  - Runs 100% locally on your Mac M4
+- **Step 1**: Pattern generation engine ✅
+- **Step 2**: Ollama vision AI integration ✅
+- **Step 3**: Web interface with live preview ✅
+
+### 🎨 Features
+- Upload image OR text prompt
+- Live HTML preview
+- Adjustable settings
+- PDF download
+- ~3-30 second generation time
+- 100% local, no API costs
 
 ### 🚧 Next Steps
 - **Step 3**: Build simple web interface
