@@ -16,29 +16,42 @@ source venv/bin/activate
 pip install fpdf2
 ```
 
-### 2. Generate a Pattern
-Currently, the system uses simulated vision data. To generate the example patterns:
+### 2. Download Ollama Vision Model
+```bash
+ollama pull llava
+```
 
+### 3. Generate a Pattern from an Image
 ```bash
 source venv/bin/activate
+python3 image_to_pattern.py path/to/your/image.jpg [optional_name]
+```
+
+**Example:**
+```bash
+python3 image_to_pattern.py my_crochet_toy.png "My Custom Toy"
+```
+
+### 4. Or Use Pre-Made Examples
+```bash
 python3 pattern_engine.py fred    # Generates Fred the Dino
-python3 pattern_engine.py otis    # Generates Otis the Snake Plant
+python3 pattern_engine.py otis    # Generates Otis the Snake Plant  
 python3 pattern_engine.py ana     # Generates Ana the Sunflower
-python3 pattern_engine.py all     # Generates all three
 ```
 
 ## Project Status
 
-### ✅ Completed (Step 1)
-- Pattern generation engine with 4 shape types
-- PDF export using fpdf2 (lightweight, fast)
-- Fixed infinite loops and memory issues
-- All emojis removed for proper PDF rendering
+### ✅ Completed
+- **Step 1**: Pattern generation engine with 4 shape types ✅
+- **Step 2**: Ollama vision AI integration (llava model) ✅
+  - Analyzes images and identifies components
+  - Generates patterns in ~3-30 seconds depending on complexity
+  - Runs 100% locally on your Mac M4
 
 ### 🚧 Next Steps
-- **Step 2**: Connect Ollama vision AI (llava model)
 - **Step 3**: Build simple web interface
 - **Step 4**: Add more shape types (petals, wings, complex leaves)
+- **Step 5**: Fine-tune prompts for better accuracy
 
 ## Example Output
 Generated PDFs are ~3KB each and include:
