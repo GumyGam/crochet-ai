@@ -3,3 +3,5 @@ venv/
 __pycache__/
 *.pdf
 .DS_Store
+uploads/
+generated_patterns/

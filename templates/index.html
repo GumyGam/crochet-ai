@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧶 Crochet Pattern Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            min-height: 600px;
+        }
+        
+        .input-panel {
+            padding: 30px;
+            border-right: 2px solid #e0e0e0;
+            background: #f9f9f9;
+        }
+        
+        .preview-panel {
+            padding: 30px;
+            overflow-y: auto;
+            max-height: 800px;
+        }
+        
+        .section {
+            margin-bottom: 25px;
+        }
+        
+        .section-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+        
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f0ff;
+        }
+        
+        .upload-area.dragover {
+            background: #e8e8ff;
+            border-color: #764ba2;
+        }
+        
+        .upload-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .divider {
+            text-align: center;
+            margin: 20px 0;
+            color: #999;
+            font-weight: 500;
+        }
+        
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1em;
+            resize: vertical;
+            min-height: 80px;
+            font-family: inherit;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .settings {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .setting-item {
+            margin-bottom: 15px;
+        }
+        
+        .setting-item label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+        
+        input[type="text"], select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: #28a745;
+            margin-top: 15px;
+        }
+        
+        .preview-content {
+            background: #f9f9f9;
+            padding: 25px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+        }
+        
+        .preview-content h2 {
+            color: #667eea;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .preview-content h3 {
+            color: #764ba2;
+            margin-top: 15px;
+            margin-bottom: 8px;
+        }
+        
+        .preview-content p {
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+        
+        .preview-content strong {
+            color: #333;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: #ff4444;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .success {
+            background: #28a745;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .preview-empty {
+            text-align: center;
+            color: #999;
+            padding: 60px 20px;
+        }
+        
+        .preview-empty-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧶 Crochet Pattern Generator</h1>
+            <p>Upload an image or describe what you want to crochet</p>
+        </div>
+        
+        <div class="main-content">
+            <!-- Left Panel: Input & Settings -->
+            <div class="input-panel">
+                <div class="section">
+                    <div class="section-title">📷 Upload Image</div>
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">📁</div>
+                        <p><strong>Click to upload</strong> or drag and drop</p>
+                        <p style="font-size: 0.9em; color: #666;">PNG, JPG, JPEG, GIF (max 16MB)</p>
+                        <input type="file" id="imageInput" accept="image/*">
+                    </div>
+                    <div id="imagePreview" style="margin-top: 15px; text-align: center;"></div>
+                </div>
+                
+                <div class="divider">— OR —</div>
+                
+                <div class="section">
+                    <div class="section-title">✍️ Describe Your Pattern</div>
+                    <textarea id="promptInput" placeholder="Example: A cute blue octopus with 8 legs and a smile"></textarea>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">⚙️ Settings</div>
+                    <div class="settings">
+                        <div class="setting-item">
+                            <label>Pattern Name</label>
+                            <input type="text" id="patternName" value="My_Custom_Pattern">
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn" id="generateBtn" onclick="generatePattern()">
+                    🎨 Generate Pattern
+                </button>
+                
+                <button class="btn btn-secondary" id="downloadBtn" onclick="downloadPDF()" style="display: none;">
+                    📥 Download PDF
+                </button>
+            </div>
+            
+            <!-- Right Panel: Preview -->
+            <div class="preview-panel">
+                <div class="section-title">📄 Pattern Preview</div>
+                <div id="previewArea">
+                    <div class="preview-empty">
+                        <div class="preview-empty-icon">📝</div>
+                        <p>Your pattern will appear here</p>
+                        <p style="font-size: 0.9em; margin-top: 10px;">Upload an image or enter a description to get started</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentPdfUrl = null;
+        
+        // Upload area drag and drop
+        const uploadArea = document.getElementById('uploadArea');
+        const imageInput = document.getElementById('imageInput');
+        
+        uploadArea.addEventListener('click', () => imageInput.click());
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                imageInput.files = files;
+                showImagePreview(files[0]);
+            }
+        });
+        
+        imageInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                showImagePreview(e.target.files[0]);
+            }
+        });
+        
+        function showImagePreview(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('imagePreview').innerHTML = 
+                    `<img src="${e.target.result}" style="max-width: 100%; max-height: 200px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">`;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        async function generatePattern() {
+            const imageFile = imageInput.files[0];
+            const promptText = document.getElementById('promptInput').value.trim();
+            const patternName = document.getElementById('patternName').value.trim();
+            
+            if (!imageFile && !promptText) {
+                showError('Please upload an image or enter a description');
+                return;
+            }
+            
+            const generateBtn = document.getElementById('generateBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const previewArea = document.getElementById('previewArea');
+            
+            generateBtn.disabled = true;
+            generateBtn.textContent = '⏳ Analyzing...';
+            downloadBtn.style.display = 'none';
+            
+            previewArea.innerHTML = '<div class="loading"><div class="spinner"></div><p>Analyzing your input...</p></div>';
+            
+            try {
+                // Step 1: Analyze
+                const formData = new FormData();
+                if (imageFile) {
+                    formData.append('image', imageFile);
+                }
+                if (promptText) {
+                    formData.append('prompt', promptText);
+                }
+                
+                const analyzeResponse = await fetch('/api/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!analyzeResponse.ok) {
+                    const error = await analyzeResponse.json();
+                    throw new Error(error.error || 'Analysis failed');
+                }
+                
+                const analyzeData = await analyzeResponse.json();
+                
+                // Step 2: Generate
+                generateBtn.textContent = '⏳ Generating pattern...';
+                previewArea.innerHTML = '<div class="loading"><div class="spinner"></div><p>Creating your pattern...</p></div>';
+                
+                const generateResponse = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        pattern_data: analyzeData.pattern_data,
+                        name: patternName
+                    })
+                });
+                
+                if (!generateResponse.ok) {
+                    const error = await generateResponse.json();
+                    throw new Error(error.error || 'Generation failed');
+                }
+                
+                const generateData = await generateResponse.json();
+                
+                // Show preview
+                previewArea.innerHTML = `<div class="preview-content">${generateData.preview}</div>`;
+                currentPdfUrl = generateData.pdf_url;
+                
+                // Show download button
+                downloadBtn.style.display = 'block';
+                showSuccess('Pattern generated successfully!');
+                
+            } catch (error) {
+                showError(error.message);
+                previewArea.innerHTML = '<div class="preview-empty"><div class="preview-empty-icon">❌</div><p>Failed to generate pattern</p></div>';
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = '🎨 Generate Pattern';
+            }
+        }
+        
+        function downloadPDF() {
+            if (currentPdfUrl) {
+                window.location.href = currentPdfUrl;
+            }
+        }
+        
+        function showError(message) {
+            const previewArea = document.getElementById('previewArea');
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = '❌ ' + message;
+            previewArea.insertBefore(errorDiv, previewArea.firstChild);
+            setTimeout(() => errorDiv.remove(), 5000);
+        }
+        
+        function showSuccess(message) {
+            const previewArea = document.getElementById('previewArea');
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success';
+            successDiv.textContent = '✅ ' + message;
+            previewArea.insertBefore(successDiv, previewArea.firstChild);
+            setTimeout(() => successDiv.remove(), 5000);
+        }
+    </script>
+</body>
+</html>
