@@ -1,7 +1,5 @@
 import math
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from reportlab.lib import colors
+from fpdf import FPDF
 
 class BeginnerPatternGenerator:
     def __init__(self):
@@ -17,68 +15,68 @@ class BeginnerPatternGenerator:
         }
 
     def save_to_pdf(self, filename, content):
-        """Saves the pattern content to a PDF file."""
-        print(f"DEBUG: Saving PDF {filename}...")
-        c = canvas.Canvas(filename, pagesize=letter)
-        width, height = letter
+        """Saves the pattern content to a PDF file using fpdf2 (lightweight)."""
+        print(f"Generating PDF: {filename}...")
         
-        # Setup fonts
-        c.setFont("Helvetica", 12)
-        text_object = c.beginText(50, height - 50)
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_auto_page_break(auto=True, margin=15)
         
-        # Simple markdown parsing for bold/headers
         lines = content.split('\n')
-        for line in lines:
-            if line.startswith("# "): # H1
-                c.setFont("Helvetica-Bold", 18)
-                text_object.setFont("Helvetica-Bold", 18)
-                text_object.textLine(line.replace("# ", ""))
-                text_object.moveCursor(0, 10) # extra space
-                c.setFont("Helvetica", 12) # reset
-                text_object.setFont("Helvetica", 12)
-            elif line.startswith("## "): # H2
-                c.setFont("Helvetica-Bold", 14)
-                text_object.setFont("Helvetica-Bold", 14)
-                text_object.moveCursor(0, 5)
-                text_object.textLine(line.replace("## ", ""))
-                text_object.moveCursor(0, 5)
-                c.setFont("Helvetica", 12)
-                text_object.setFont("Helvetica", 12)
-            elif line.startswith("### "): # H3
-                c.setFont("Helvetica-Bold", 12)
-                text_object.setFont("Helvetica-Bold", 12)
-                text_object.textLine(line.replace("### ", ""))
-                c.setFont("Helvetica", 12)
-                text_object.setFont("Helvetica", 12)
-            elif line.startswith("**"): # Bold line start
-                c.setFont("Helvetica-Bold", 12)
-                text_object.setFont("Helvetica-Bold", 12)
-                text_object.textLine(line.replace("**", ""))
-                c.setFont("Helvetica", 12)
-                text_object.setFont("Helvetica", 12)
-            elif line.strip() == "---": # Separator
-                text_object.textLine("_" * 60)
+        for clean_line in lines:
+            # Clean the line
+            clean_line = clean_line.strip()
+            
+            # Skip empty lines
+            if not clean_line:
+                pdf.ln(4)
+                continue
+            
+            if clean_line.startswith("# "): # H1
+                pdf.set_font("Helvetica", 'B', 16)
+                pdf.write(10, clean_line.replace("# ", ""))
+                pdf.ln(10)
+            elif clean_line.startswith("## "): # H2
+                pdf.set_font("Helvetica", 'B', 14)
+                pdf.ln(4)
+                pdf.write(8, clean_line.replace("## ", ""))
+                pdf.ln(8)
+            elif clean_line.startswith("### "): # H3
+                pdf.set_font("Helvetica", 'B', 11)
+                pdf.write(6, clean_line.replace("### ", ""))
+                pdf.ln(6)
+            elif clean_line.startswith("**"): # Bold line
+                pdf.set_font("Helvetica", 'B', 9)
+                text = clean_line.replace("**", "")
+                pdf.write(5, text)
+                pdf.ln(5)
+            elif clean_line.startswith("-"): # List item
+                pdf.set_font("Helvetica", '', 9)
+                pdf.write(5, clean_line)
+                pdf.ln(5)
+            elif clean_line == "---": # Separator
+                pdf.ln(3)
+                pdf.set_font("Helvetica", '', 9)
+                pdf.write(2, "_" * 50)
+                pdf.ln(5)
+            elif clean_line.startswith("*") and clean_line.endswith("*"): # Italic
+                pdf.set_font("Helvetica", 'I', 9)
+                pdf.write(5, clean_line.replace("*", ""))
+                pdf.ln(5)
             else:
                 # Regular text
-                # clean up bold markers within line for now (simple approach)
-                clean_line = line.replace("**", "")
-                text_object.textLine(clean_line)
-            
-            # Check for page break
-            if text_object.getY() < 50:
-                c.drawText(text_object)
-                c.showPage()
-                text_object = c.beginText(50, height - 50)
-                text_object.setFont("Helvetica", 12)
-                
-        c.drawText(text_object)
-        c.save()
-        print(f"PDF saved as: {filename}")
+                pdf.set_font("Helvetica", '', 9)
+                final_text = clean_line.replace("**", "")
+                pdf.write(5, final_text)
+                pdf.ln(5)
+        
+        pdf.output(filename)
+        print(f"PDF saved: {filename}")
 
     def add_header(self):
         header = "# YOUR CUSTOM CROCHET PATTERN\n"
         header += "*Terminlogy: US Standard*\n\n"
-        header += "## 🧶 BEGINNER TIPS\n"
+        header += "## BEGINNER TIPS\n"
         header += "- **Mark your rounds:** Use a stitch marker (or safety pin) in the first stitch of every round so you don't lose count.\n"
         header += "- **Counting:** The number in (parentheses) at the end of each line is how many stitches you should have. Count them!\n"
         header += "- **Magic Loop:** If the magic loop is too hard, you can 'Chain 2' and make 6 sc into the second chain from the hook.\n\n"
@@ -92,13 +90,13 @@ class BeginnerPatternGenerator:
         """Formats a single round with beginner tips."""
         line = f"**Rnd {round_num}:** {instruction} ({count} sts)"
         if tip:
-            line += f"\n   *💡 Tip: {tip}*"
+            line += f"\n   *TIP: {tip}*"
         return line
 
     def generate_sphere(self, name, color, max_stitches=24, height_rows=5):
         """Generates a beginner-friendly sphere pattern."""
         pattern = []
-        pattern.append(f"### 🟢 {name.upper()} (Use {color} yarn)")
+        pattern.append(f"### {name.upper()} (Use {color} yarn)")
         pattern.append("This piece is worked in continuous rounds. Do not join at the end of rounds.\n")
         
         # 1. Increase Phase
@@ -122,7 +120,7 @@ class BeginnerPatternGenerator:
 
         # SAFETY EYES CHECKPOINT
         if "Head" in name:
-            pattern.append("\n🛑 **STOP!** If you are using safety eyes, attach them now between Rnds 8 and 9.\n")
+            pattern.append("\n**STOP!** If you are using safety eyes, attach them now between Rnds 8 and 9.\n")
 
         # 3. Decrease Phase
         while current_stitches > 6:
@@ -133,7 +131,7 @@ class BeginnerPatternGenerator:
                 pattern.append(self.format_round(rnd, "dec 6 times", current_stitches - 6))
             
             if current_stitches == 12:
-                 pattern.append("   *☁️ Stuff the piece firmly with stuffing now!*")
+                 pattern.append("   *Stuff the piece firmly with stuffing now!*")
             
             current_stitches -= 6
             rnd += 1
@@ -144,18 +142,25 @@ class BeginnerPatternGenerator:
     def generate_cylinder(self, name, color, width_stitches=12, height_rows=8):
         """Generates a tube pattern."""
         pattern = []
-        pattern.append(f"### 🦵 {name.upper()} (Use {color} yarn)")
+        pattern.append(f"### {name.upper()} (Use {color} yarn)")
         
+        # 1. Start with magic loop
+        current_stitches = 6
         pattern.append(self.format_round(1, "Start 6 sc in a magic loop", 6))
         
-        # Increase only if width > 6
-        current_stitches = 6
+        # 2. Increase to desired width
         rnd = 2
         while current_stitches < width_stitches:
-             pattern.append(self.format_round(rnd, "inc in every stitch", 12))
-             current_stitches = 12
-             rnd += 1
+            if rnd == 2:
+                pattern.append(self.format_round(rnd, "inc in every stitch", 12))
+                current_stitches = 12
+            else:
+                sc_count = (current_stitches // 6) - 1
+                pattern.append(self.format_round(rnd, f"[sc {sc_count}, inc] repeat 6 times", current_stitches + 6))
+                current_stitches += 6
+            rnd += 1
 
+        # 3. Work even for height
         pattern.append(self.format_round(f"{rnd} to {rnd + height_rows - 1}", "sc in every stitch around", current_stitches))
         
         pattern.append("\n**Finish:** Fasten off. Leave a long tail for sewing it to the body. Stuff lightly.\n")
@@ -164,7 +169,7 @@ class BeginnerPatternGenerator:
     def generate_cone(self, name, color, base_stitches=12, height_rows=6):
         """Generates a cone pattern."""
         pattern = []
-        pattern.append(f"### 🔺 {name.upper()} (Use {color} yarn)")
+        pattern.append(f"### {name.upper()} (Use {color} yarn)")
         
         pattern.append(self.format_round(1, "Start 4 sc in a magic loop", 4))
         current_stitches = 4
@@ -188,7 +193,7 @@ class BeginnerPatternGenerator:
     def generate_flat_leaf(self, name, color, length_chains):
         """Generates a simple flat leaf (Otis style)."""
         pattern = []
-        pattern.append(f"### 🌿 {name.upper()} (Use {color} yarn)")
+        pattern.append(f"### {name.upper()} (Use {color} yarn)")
         pattern.append("*This part is worked in rows, not rounds. You will turn your work at the end of each row.*")
         
         pattern.append(f"**Row 1:** Chain {length_chains}.")
@@ -225,50 +230,61 @@ ana_vision_output = [
 
 # --- MAIN GENERATOR LOGIC ---
 if __name__ == "__main__":
+    import sys
     engine = BeginnerPatternGenerator()
     
-    print("Generating PDF patterns...")
+    # Check if a specific pattern was requested
+    if len(sys.argv) > 1:
+        pattern_name = sys.argv[1].lower()
+    else:
+        pattern_name = "all"
+    
+    print(f"Generating patterns: {pattern_name}")
 
-    # FRED
-    full_pattern = engine.add_header()
-    full_pattern += "## 🦖 FRED THE DINO\n\n"
-    for part in fred_vision_output:
-        if part["type"] == "sphere":
-            full_pattern += engine.generate_sphere(part["name"], part["color"], part["max_stitches"], part["height"])
-        elif part["type"] == "cylinder":
-            full_pattern += engine.generate_cylinder(part["name"], part["color"], part["width"], part["height"])
-        elif part["type"] == "cone":
-            full_pattern += engine.generate_cone(part["name"], part["color"], part["base"], part["height"])
-        elif part["type"] == "flat_leaf":
-             full_pattern += engine.generate_flat_leaf(part["name"], part["color"], part["length"])
-    engine.save_to_pdf("Fred_The_Dino_Pattern.pdf", full_pattern)
+    if pattern_name in ["fred", "all"]:
+        print("\n=== Generating Fred the Dino ===")
+        full_pattern = engine.add_header()
+        full_pattern += "## FRED THE DINO\n\n"
+        for part in fred_vision_output:
+            if part["type"] == "sphere":
+                full_pattern += engine.generate_sphere(part["name"], part["color"], part["max_stitches"], part["height"])
+            elif part["type"] == "cylinder":
+                full_pattern += engine.generate_cylinder(part["name"], part["color"], part["width"], part["height"])
+            elif part["type"] == "cone":
+                full_pattern += engine.generate_cone(part["name"], part["color"], part["base"], part["height"])
+        engine.save_to_pdf("Fred_The_Dino_Pattern.pdf", full_pattern)
+        del full_pattern  # Free memory
 
-    # OTIS
-    full_pattern = engine.add_header()
-    full_pattern += "## 🌿 OTIS THE SNAKE PLANT\n\n"
-    for part in otis_vision_output:
-        if part["type"] == "sphere":
-            full_pattern += engine.generate_sphere(part["name"], part["color"], part["max_stitches"], part["height"])
-        elif part["type"] == "cylinder":
-            full_pattern += engine.generate_cylinder(part["name"], part["color"], part["width"], part["height"])
-        elif part["type"] == "cone":
-            full_pattern += engine.generate_cone(part["name"], part["color"], part["base"], part["height"])
-        elif part["type"] == "flat_leaf":
-             full_pattern += engine.generate_flat_leaf(part["name"], part["color"], part["length"])
-    engine.save_to_pdf("Otis_The_Snake_Plant_Pattern.pdf", full_pattern)
+    if pattern_name in ["otis", "all"]:
+        print("\n=== Generating Otis the Snake Plant ===")
+        full_pattern = engine.add_header()
+        full_pattern += "## OTIS THE SNAKE PLANT\n\n"
+        for part in otis_vision_output:
+            if part["type"] == "sphere":
+                full_pattern += engine.generate_sphere(part["name"], part["color"], part["max_stitches"], part["height"])
+            elif part["type"] == "cylinder":
+                full_pattern += engine.generate_cylinder(part["name"], part["color"], part["width"], part["height"])
+            elif part["type"] == "cone":
+                full_pattern += engine.generate_cone(part["name"], part["color"], part["base"], part["height"])
+            elif part["type"] == "flat_leaf":
+                 full_pattern += engine.generate_flat_leaf(part["name"], part["color"], part["length"])
+        engine.save_to_pdf("Otis_The_Snake_Plant_Pattern.pdf", full_pattern)
+        del full_pattern  # Free memory
 
-    # ANA
-    full_pattern = engine.add_header()
-    full_pattern += "## 🌻 ANA THE SUNFLOWER\n\n"
-    for part in ana_vision_output:
-        if part["type"] == "sphere":
-            full_pattern += engine.generate_sphere(part["name"], part["color"], part["max_stitches"], part["height"])
-        elif part["type"] == "cylinder":
-            full_pattern += engine.generate_cylinder(part["name"], part["color"], part["width"], part["height"])
-        elif part["type"] == "cone":
-            full_pattern += engine.generate_cone(part["name"], part["color"], part["base"], part["height"])
-        elif part["type"] == "flat_leaf":
-             full_pattern += engine.generate_flat_leaf(part["name"], part["color"], part["length"])
-    engine.save_to_pdf("Ana_The_Sunflower_Pattern.pdf", full_pattern)
+    if pattern_name in ["ana", "all"]:
+        print("\n=== Generating Ana the Sunflower ===")
+        full_pattern = engine.add_header()
+        full_pattern += "## ANA THE SUNFLOWER\n\n"
+        for part in ana_vision_output:
+            if part["type"] == "sphere":
+                full_pattern += engine.generate_sphere(part["name"], part["color"], part["max_stitches"], part["height"])
+            elif part["type"] == "cylinder":
+                full_pattern += engine.generate_cylinder(part["name"], part["color"], part["width"], part["height"])
+            elif part["type"] == "cone":
+                full_pattern += engine.generate_cone(part["name"], part["color"], part["base"], part["height"])
+            elif part["type"] == "flat_leaf":
+                 full_pattern += engine.generate_flat_leaf(part["name"], part["color"], part["length"])
+        engine.save_to_pdf("Ana_The_Sunflower_Pattern.pdf", full_pattern)
+        del full_pattern  # Free memory
 
-    print("Done! PDF files created.")
+    print("\n✅ Done! PDF files created.")
