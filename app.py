@@ -11,14 +11,12 @@ import traceback
 from pathlib import Path
 from vision_analyzer import VisionAnalyzer
 from pattern_engine import BeginnerPatternGenerator
-import ollama
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
 
-# Create upload folder if it doesn't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs('generated_patterns', exist_ok=True)
 
@@ -31,152 +29,53 @@ def index():
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze():
-    """Analyze image and/or text prompt and return pattern data"""
+    """
+    Analyze image and/or text. Returns:
+      - creature_type: what the AI thinks this is
+      - raw_parts: what the AI detected (for the review UI)
+      - pattern_data: converted for the pattern engine
+    """
     try:
-        pattern_data = []
         has_image = 'image' in request.files and request.files['image'].filename
         has_prompt = 'prompt' in request.form and request.form['prompt'].strip()
-        
+
         if not has_image and not has_prompt:
             return jsonify({'error': 'Please provide either an image, text description, or both'}), 400
-        
-        # Build the AI prompt
+
+        filepath = None
+        user_text = request.form.get('prompt', '').strip() if has_prompt else None
+
         if has_image:
-            # Image upload path
             file = request.files['image']
-            if file and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(filepath)
-                
-                # Create enhanced prompt if text is also provided
-                additional_context = ""
-                if has_prompt:
-                    additional_context = f"\n\nAdditional context from user: {request.form['prompt'].strip()}"
-                
-                analyzer = VisionAnalyzer()
-                
-                # Enhanced analysis with both image and text
-                base_prompt = """You are a crochet pattern expert. Analyze this image of a crochet amigurumi and identify its components.
+            if not file or not allowed_file(file.filename):
+                return jsonify({'error': 'Invalid file type. Use PNG, JPG, JPEG, or GIF.'}), 400
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
 
-For EACH visible part, describe:
-1. Shape type: sphere (round/ball), cylinder (tube/column), cone (pointy/tapered), or flat_leaf (flat/thin)
-2. Part name (e.g., "Head", "Body", "Leg", "Ear", "Tail")
-3. Color
-4. Approximate size (small/medium/large)"""
-                
-                if has_prompt:
-                    base_prompt += additional_context
-                
-                base_prompt += """
+        analyzer = VisionAnalyzer()
 
-Return ONLY a JSON array like this (no other text):
-[
-  {"type": "sphere", "name": "Head & Body", "color": "Green", "size": "large"},
-  {"type": "cone", "name": "Tail", "color": "Green", "size": "medium"}
-]
+        try:
+            result = analyzer.analyze(image_path=filepath, user_text=user_text)
+        except Exception as ollama_err:
+            print("[ANALYZE] Ollama/analysis error:", str(ollama_err))
+            traceback.print_exc()
+            return jsonify({
+                'error': 'Could not reach Ollama. Is it running? '
+                         'Run "ollama serve" and ensure "llava" is installed (ollama pull llava).'
+            }), 503
 
-Be specific and list ALL visible parts."""
-                
-                try:
-                    response = ollama.chat(
-                        model='llava',
-                        messages=[{
-                            'role': 'user',
-                            'content': base_prompt,
-                            'images': [filepath]
-                        }]
-                    )
-                    response_text = response['message']['content']
-                except Exception as ollama_err:
-                    print("[ANALYZE] Ollama error:", str(ollama_err))
-                    traceback.print_exc()
-                    return jsonify({
-                        'error': 'Could not reach Ollama. Is it running? Run "ollama serve" and ensure "llava" is installed (ollama pull llava).'
-                    }), 503
-                
-                # Parse JSON
-                start_idx = response_text.find('[')
-                end_idx = response_text.rfind(']') + 1
-                if start_idx == -1 or end_idx <= 0:
-                    print("[ANALYZE] No JSON array in response. First 500 chars:", response_text[:500])
-                    return jsonify({
-                        'error': 'AI did not return valid part list. Try a clearer image or different description.'
-                    }), 400
-                try:
-                    json_str = response_text[start_idx:end_idx]
-                    vision_data = json.loads(json_str)
-                    pattern_data = analyzer._convert_to_pattern_format(vision_data)
-                except json.JSONDecodeError as je:
-                    print("[ANALYZE] JSON parse error:", je)
-                    traceback.print_exc()
-                    return jsonify({
-                        'error': f'Invalid response from AI (JSON error). Try again or simplify the image/description.'
-                    }), 400
-                except (KeyError, TypeError) as ke:
-                    print("[ANALYZE] Convert error:", ke)
-                    traceback.print_exc()
-                    return jsonify({
-                        'error': f'AI returned an unsupported shape or missing field: {ke}. Try a simpler image or description.'
-                    }), 400
-        
-        elif has_prompt:
-            # Text-only path
-            prompt = request.form['prompt'].strip()
-            
-            system_prompt = """You are a crochet pattern expert. Based on the user's description, identify the components needed.
+        if not result or not result.get('pattern_data'):
+            return jsonify({
+                'error': 'AI could not identify any parts. Try a clearer image or more detailed description.'
+            }), 400
 
-Return ONLY a JSON array like this (no other text):
-[
-  {"type": "sphere", "name": "Body", "color": "Blue", "size": "large"},
-  {"type": "cylinder", "name": "Leg", "color": "Blue", "size": "small"}
-]
+        return jsonify({
+            'creature_type': result['creature_type'],
+            'raw_parts': result['raw_parts'],
+            'pattern_data': result['pattern_data'],
+        })
 
-Available types: sphere (round/ball), cylinder (tube/column), cone (pointy/tapered), flat_leaf (flat/thin)
-Sizes: small, medium, large"""
-            
-            try:
-                response = ollama.chat(
-                    model='llava',
-                    messages=[
-                        {'role': 'system', 'content': system_prompt},
-                        {'role': 'user', 'content': f"Create a crochet pattern for: {prompt}"}
-                    ]
-                )
-                response_text = response['message']['content']
-            except Exception as ollama_err:
-                print("[ANALYZE] Ollama error (text-only):", str(ollama_err))
-                traceback.print_exc()
-                return jsonify({
-                    'error': 'Could not reach Ollama. Is it running? Run "ollama serve" and ensure "llava" is installed (ollama pull llava).'
-                }), 503
-            
-            start_idx = response_text.find('[')
-            end_idx = response_text.rfind(']') + 1
-            if start_idx == -1 or end_idx <= 0:
-                print("[ANALYZE] No JSON array (text-only). First 500 chars:", response_text[:500])
-                return jsonify({
-                    'error': 'AI did not return valid part list. Try a different or more specific description.'
-                }), 400
-            try:
-                json_str = response_text[start_idx:end_idx]
-                vision_data = json.loads(json_str)
-                analyzer = VisionAnalyzer()
-                pattern_data = analyzer._convert_to_pattern_format(vision_data)
-            except json.JSONDecodeError as je:
-                print("[ANALYZE] JSON parse error (text-only):", je)
-                traceback.print_exc()
-                return jsonify({'error': 'Invalid response from AI. Try a different description.'}), 400
-            except (KeyError, TypeError) as ke:
-                print("[ANALYZE] Convert error (text-only):", ke)
-                traceback.print_exc()
-                return jsonify({'error': f'AI returned unsupported shape or missing field: {ke}'}), 400
-        
-        if not pattern_data:
-            return jsonify({'error': 'Could not analyze the input. Please try again.'}), 400
-        
-        return jsonify({'pattern_data': pattern_data})
-    
     except Exception as e:
         print("[ANALYZE] Unexpected error:", str(e))
         traceback.print_exc()
@@ -184,66 +83,30 @@ Sizes: small, medium, large"""
 
 @app.route('/api/generate', methods=['POST'])
 def generate():
-    """Generate pattern preview and PDF from pattern data"""
+    """Generate pattern preview and PDF from pattern data or raw_parts"""
     try:
         data = request.json
         pattern_data = data.get('pattern_data', [])
+        raw_parts = data.get('raw_parts', [])
         pattern_name = data.get('name', 'Custom_Pattern')
-        
+
+        # If raw_parts came from the review UI, convert them to engine format
+        if raw_parts and not pattern_data:
+            analyzer = VisionAnalyzer()
+            pattern_data = analyzer._convert_to_pattern_format(raw_parts)
+
         if not pattern_data:
-            return jsonify({'error': 'No pattern data provided. Re-run analysis (upload image or enter description) and try again.'}), 400
+            return jsonify({'error': 'No pattern data provided. Run analysis first.'}), 400
         
         # Generate pattern text
         engine = BeginnerPatternGenerator()
         full_pattern = engine.add_header()
         full_pattern += f"## {pattern_name.replace('_', ' ').upper()}\n\n"
+        full_pattern += engine.generate_materials(pattern_data)
         
         try:
             for part in pattern_data:
-                if part["type"] == "sphere":
-                    full_pattern += engine.generate_sphere(
-                        part["name"], part["color"],
-                        part["max_stitches"], part["height"]
-                    )
-                elif part["type"] == "cylinder":
-                    full_pattern += engine.generate_cylinder(
-                        part["name"], part["color"],
-                        part["width"], part["height"]
-                    )
-                elif part["type"] == "cone":
-                    full_pattern += engine.generate_cone(
-                        part["name"], part["color"],
-                        part["base"], part["height"]
-                    )
-                elif part["type"] == "flat_leaf":
-                    full_pattern += engine.generate_flat_leaf(
-                        part["name"], part["color"],
-                        part["length"]
-                    )
-                elif part["type"] == "heart_leaf":
-                    full_pattern += engine.generate_heart_leaf(
-                        part["name"], part["color"],
-                        part["size"]
-                    )
-                elif part["type"] == "wing":
-                    full_pattern += engine.generate_wing(
-                        part["name"], part["color"],
-                        part["size"]
-                    )
-                elif part["type"] == "petals":
-                    full_pattern += engine.generate_petals(
-                        part["name"], part["color"],
-                        part["num_petals"], part["attachment"]
-                    )
-                elif part["type"] == "spikes":
-                    full_pattern += engine.generate_spikes(
-                        part["name"], part["color"],
-                        part["num_spikes"]
-                    )
-                else:
-                    return jsonify({
-                        'error': f'Unknown part type "{part.get("type", "?")}" for "{part.get("name", "?")}". The AI may have returned a shape we don\'t support yet.'
-                    }), 400
+                full_pattern += engine.generate_part(part)
         except KeyError as ke:
             part_name = part.get('name', 'unknown')
             print("[GENERATE] Missing key:", ke, "for part:", part)
@@ -252,6 +115,9 @@ def generate():
                 'error': f'Pattern data incomplete: missing "{ke}" for part "{part_name}". Try a simpler image or description.'
             }), 400
         
+        # Add assembly instructions based on part positions
+        full_pattern += engine.generate_assembly(pattern_data)
+
         # Convert markdown to HTML for preview
         html_pattern = markdown_to_html(full_pattern)
         

@@ -1,220 +1,393 @@
 """
-Vision Analyzer - Uses Ollama's llava model to analyze crochet images
-and extract pattern structure information
+Vision Analyzer - Uses Ollama's llava model to analyze images
+and extract structured pattern data for crochet pattern generation.
+
+Pipeline:
+  Round 1: AI looks at image + user text → identifies parts
+  Round 2: AI reviews its own work → catches mistakes
+  User text filtering is built into both rounds (user text always wins)
 """
 
 import ollama
 import json
-import base64
 from pathlib import Path
+
+# Every shape type the pattern engine can generate.
+# This list is passed to the AI so it knows what options it has.
+SUPPORTED_SHAPES = {
+    "sphere": "Round/ball shapes (heads, round bodies, balls, eyes)",
+    "oval": "Egg or oval shapes (bird bodies, elongated heads, beans)",
+    "cylinder": "Tube/column shapes (legs, arms, necks, stems, pots)",
+    "cone": "Pointy/tapered shapes (ears, horns, beaks, small noses, carrots)",
+    "dome": "Half-sphere, flat on bottom (mushroom caps, turtle shells, hats)",
+    "flat_circle": "Small flat round shapes (round ears, paw pads, spots, eye patches)",
+    "flat_leaf": "Simple flat rectangle/strip (simple leaves, scarves, flat wings)",
+    "tapered_tube": "Tube that gradually gets thinner (tails, tentacles, snakes)",
+    "fan": "Fan or spread-out shape (bird tails, fish tails, ruffles)",
+    "bird_feet": "Small forked/branching feet (bird or chicken feet)",
+    "heart_leaf": "Heart-shaped or organic curvy leaves (Monstera, fancy leaves)",
+    "wing": "Triangular bat/dragon wings with jagged edges",
+    "petals": "Small loops attached around a circular center (flower petals)",
+    "spikes": "Tiny triangular protrusions (dinosaur spikes, hedgehog spines)",
+    "bobble": "Round bumps that stick out (frog/bug eyes, textured dots)",
+}
+
 
 class VisionAnalyzer:
     def __init__(self, model="llava"):
         self.model = model
-        
-    def analyze_image(self, image_path):
+
+    def _build_shapes_list(self):
+        """Format the supported shapes into a readable list for the AI prompt."""
+        lines = []
+        for shape_name, description in SUPPORTED_SHAPES.items():
+            lines.append(f"  - {shape_name}: {description}")
+        return "\n".join(lines)
+
+    def _build_analysis_prompt(self, user_text=None):
         """
-        Analyze an image and return structured pattern data.
-        
-        Args:
-            image_path: Path to the image file
-            
-        Returns:
-            List of pattern parts in the format:
-            [{"type": "sphere", "name": "Body", "color": "Blue", ...}, ...]
+        Build the Round 1 prompt. This is the main prompt that asks the AI
+        to analyze the image and identify all parts.
         """
-        
-        # Enhanced analysis prompt with more shape types
-        prompt = """You are an expert crochet pattern designer analyzing amigurumi images.
+        shapes_list = self._build_shapes_list()
 
-IMPORTANT: Identify EVERY visible component, including small details.
+        prompt = f"""You are an expert crochet amigurumi pattern designer.
+Analyze this image carefully and identify every visible part.
 
-For EACH part, identify:
-1. **Shape type** (choose the BEST match):
-   - sphere: Round/ball shapes (heads, bodies, balls)
-   - cylinder: Tube/column shapes (legs, arms, necks, tails if tubular)
-   - cone: Pointy/tapered shapes (ears, horns, pointed tails)
-   - flat_leaf: Simple flat pieces (basic leaves, scarves)
-   - heart_leaf: Heart-shaped or organic leaves (Monstera, fancy leaves)
-   - wing: Triangular/bat-wing shapes with pointed edges
-   - petals: Small loops attached to a circular base (flowers)
-   - spikes: Tiny triangular protrusions (dinosaur spikes, ridges)
+AVAILABLE SHAPE TYPES (pick the best match for each part):
+{shapes_list}
 
-2. **Part name**: Be specific (e.g., "Head & Body combined", "Left Arm", "Back Spike")
-
-3. **Color**: Actual color name
-
-4. **Size**: small, medium, or large (relative to the whole figure)
-
-5. **Count**: How many of this part? (e.g., "2" for two arms, "8" for octopus legs)
+For EACH visible part, identify:
+1. shape type (from the list above)
+2. part name (be specific: "Body", "Head", "Left Wing", "Beak", "Eye", etc.)
+3. color (be precise: "White with brown stripes on top" not just "White")
+4. size: tiny, small, medium, or large (relative to the whole figure)
+5. count: how many of this part (e.g., 2 wings, 4 legs, 2 eyes)
+6. position: where this attaches on the figure (e.g., "top of body", "sides of body", "front of head", "bottom center")
 
 CRITICAL RULES:
-- Look carefully at WINGS - they have jagged/pointed edges
-- PETALS are loops around a circular center
-- SPIKES are tiny triangles on backs/heads
-- If a leaf has HEART shape or organic curves, use "heart_leaf" not "flat_leaf"
-- Combine head+body into ONE piece if they're the same color
+- Include ALL visible parts, even tiny details (eyes, nose, beak, feet, markings)
+- Do NOT invent parts you cannot see — only describe what is visible
+- Be precise about colors, noting stripes, patterns, or gradients
+- If head and body are one continuous piece, combine them as one part
+- "position" describes where this part connects for assembly"""
 
-Return ONLY valid JSON (no markdown, no code blocks):
-[
-  {"type": "sphere", "name": "Head & Body", "color": "Green", "size": "large", "count": 1},
-  {"type": "wing", "name": "Wing", "color": "Black", "size": "medium", "count": 2},
-  {"type": "spikes", "name": "Back Spike", "color": "Yellow", "size": "small", "count": 5}
-]
+        if user_text:
+            prompt += f"""
 
-Analyze carefully and list ALL visible parts."""
+USER INSTRUCTIONS (these override what you see):
+\"{user_text}\"
+- Only include parts that match the user's description
+- If the user says to ignore something, DO NOT include it
+- If the user specifies colors or features, use those instead of what you see"""
 
-        print(f"Analyzing image: {image_path}")
-        
-        # Call Ollama with the image
-        response = ollama.chat(
-            model=self.model,
-            messages=[{
-                'role': 'user',
-                'content': prompt,
-                'images': [str(image_path)]
-            }]
-        )
-        
-        # Extract the response
-        response_text = response['message']['content']
-        print(f"\nLLava Response:\n{response_text}\n")
-        
-        # Try to parse JSON from the response
-        try:
-            # Find JSON array in the response
-            start_idx = response_text.find('[')
-            end_idx = response_text.rfind(']') + 1
-            
-            if start_idx == -1 or end_idx == 0:
-                print("⚠️  No JSON array found in response. Using fallback pattern.")
-                return self._create_fallback_pattern(response_text)
-            
-            json_str = response_text[start_idx:end_idx]
-            pattern_data = json.loads(json_str)
-            
-            # Convert to our internal format
-            return self._convert_to_pattern_format(pattern_data)
-            
-        except json.JSONDecodeError as e:
-            print(f"⚠️  JSON parsing error: {e}")
-            print("Using fallback pattern based on description.")
-            return self._create_fallback_pattern(response_text)
-    
-    def _convert_to_pattern_format(self, vision_data):
-        """Convert llava output to pattern engine format"""
+        prompt += """
+
+Return ONLY valid JSON in this exact format (no markdown, no explanation):
+{
+  "creature_type": "bird",
+  "parts": [
+    {"type": "oval", "name": "Body", "color": "White", "size": "large", "count": 1, "position": "center"},
+    {"type": "sphere", "name": "Head", "color": "White with brown stripes", "size": "medium", "count": 1, "position": "top of body"}
+  ]
+}"""
+
+        return prompt
+
+    def _build_validation_prompt(self, analysis_json, user_text=None):
+        """
+        Build the Round 2 prompt. This sends the AI's own analysis back
+        and asks it to review for mistakes.
+        """
+        parts_summary = json.dumps(analysis_json, indent=2)
+
+        prompt = f"""Look at this image again carefully.
+
+I previously analyzed it and found these parts:
+{parts_summary}
+
+Please check:
+1. Are there VISIBLE parts I missed? (eyes, nose, beak, feet, tail, color markings, accessories?)
+2. Are the colors accurate? Look for stripes, patterns, or color changes I missed.
+3. Are the shape types correct? (Would "oval" fit better than "sphere"? Is a "tapered_tube" better than "cylinder"?)
+4. Are any parts listed that AREN'T actually in the image? Remove those.
+5. Are the positions/attachments correct for assembly?"""
+
+        if user_text:
+            prompt += f"""
+
+Remember the user said: \"{user_text}\"
+Only keep parts that match what the user wants."""
+
+        prompt += """
+
+Return the CORRECTED full JSON in the same format.
+If everything looks correct, return it unchanged.
+Return ONLY valid JSON, no other text:
+{
+  "creature_type": "...",
+  "parts": [...]
+}"""
+
+        return prompt
+
+    def analyze(self, image_path=None, user_text=None):
+        """
+        Main entry point. Runs the full analysis pipeline:
+          Round 1: Initial analysis
+          Round 2: Self-check (only when we have an image to re-examine)
+
+        Args:
+            image_path: Path to image file (optional)
+            user_text:  User's text description (optional)
+
+        Returns:
+            dict with:
+              - creature_type (str): what kind of thing this is
+              - raw_parts (list): the AI's part descriptions
+              - pattern_data (list): converted for the pattern engine
+            or None if analysis fails
+        """
+        if not image_path and not user_text:
+            raise ValueError("Need at least an image or text description")
+
+        # ── ROUND 1: Initial analysis ──
+        prompt = self._build_analysis_prompt(user_text)
+
+        messages = [{"role": "user", "content": prompt}]
+        if image_path:
+            messages[0]["images"] = [str(image_path)]
+
+        print(f"[Round 1] Analyzing {'image' if image_path else 'text only'}...")
+
+        response = ollama.chat(model=self.model, messages=messages)
+        response_text = response["message"]["content"]
+        print(f"[Round 1] Response:\n{response_text}\n")
+
+        analysis = self._parse_json_response(response_text)
+        if not analysis:
+            print("[Round 1] Failed to parse AI response, using fallback")
+            return {
+                "creature_type": "unknown",
+                "raw_parts": [],
+                "pattern_data": self._create_fallback_pattern(),
+            }
+
+        # ── ROUND 2: Self-check (only with images — we need something to look at again) ──
+        if image_path:
+            print("[Round 2] AI self-check...")
+            validation_prompt = self._build_validation_prompt(analysis, user_text)
+
+            try:
+                val_response = ollama.chat(
+                    model=self.model,
+                    messages=[{
+                        "role": "user",
+                        "content": validation_prompt,
+                        "images": [str(image_path)],
+                    }],
+                )
+                val_text = val_response["message"]["content"]
+                print(f"[Round 2] Response:\n{val_text}\n")
+
+                validated = self._parse_json_response(val_text)
+                if validated:
+                    analysis = validated
+                    print("[Round 2] Self-check complete, using corrected analysis")
+                else:
+                    print("[Round 2] Could not parse validation response, keeping Round 1 result")
+            except Exception as e:
+                print(f"[Round 2] Validation failed ({e}), keeping Round 1 result")
+
+        # ── Convert to pattern engine format ──
+        parts = analysis.get("parts", [])
+        pattern_data = self._convert_to_pattern_format(parts)
+
+        return {
+            "creature_type": analysis.get("creature_type", "unknown"),
+            "raw_parts": parts,
+            "pattern_data": pattern_data,
+        }
+
+    def _parse_json_response(self, response_text):
+        """
+        Extract a JSON object from the AI's response text.
+        Handles both the new format {"creature_type":..., "parts":[...]}
+        and the old format (plain array [...]).
+        """
+        # Try to find a JSON object first (new format)
+        obj_start = response_text.find("{")
+        obj_end = response_text.rfind("}") + 1
+        if obj_start != -1 and obj_end > 0:
+            try:
+                result = json.loads(response_text[obj_start:obj_end])
+                if "parts" in result:
+                    return result
+            except json.JSONDecodeError:
+                pass
+
+        # Fall back to finding a JSON array (old format / simpler AI response)
+        arr_start = response_text.find("[")
+        arr_end = response_text.rfind("]") + 1
+        if arr_start != -1 and arr_end > 0:
+            try:
+                parts = json.loads(response_text[arr_start:arr_end])
+                return {"creature_type": "unknown", "parts": parts}
+            except json.JSONDecodeError:
+                pass
+
+        return None
+
+    def _convert_to_pattern_format(self, parts):
+        """
+        Convert AI-detected parts into the format the pattern engine expects.
+        Maps size labels (tiny/small/medium/large) to actual stitch counts.
+        """
         pattern_parts = []
-        
-        for part in vision_data:
-            # Map size to actual stitch counts
-            size = part.get('size', 'medium').lower()
-            count = part.get('count', 1)
-            part_type = part['type']
-            
-            # Update name with count if > 1
-            part_name = part['name']
+
+        for part in parts:
+            size = part.get("size", "medium").lower()
+            if size not in ("tiny", "small", "medium", "large"):
+                size = "medium"
+
+            count = part.get("count", 1)
+            part_type = part.get("type", "sphere")
+            position = part.get("position", "")
+            color = part.get("color", "Unknown")
+
+            part_name = part.get("name", "Part")
             if count > 1:
                 part_name = f"{part_name} (Make {count})"
-            
-            if part_type == 'sphere':
-                max_stitches = {'small': 18, 'medium': 24, 'large': 30}.get(size, 24)
-                height = {'small': 3, 'medium': 5, 'large': 8}.get(size, 5)
-                pattern_parts.append({
+
+            base = {
+                "name": part_name,
+                "color": color,
+                "position": position,
+            }
+
+            if part_type == "sphere":
+                base.update({
                     "type": "sphere",
-                    "name": part_name,
-                    "color": part['color'],
-                    "max_stitches": max_stitches,
-                    "height": height
+                    "max_stitches": {"tiny": 12, "small": 18, "medium": 24, "large": 30}[size],
+                    "height": {"tiny": 2, "small": 3, "medium": 5, "large": 8}[size],
                 })
-            
-            elif part_type == 'cylinder':
-                width = {'small': 6, 'medium': 12, 'large': 18}.get(size, 12)
-                height = {'small': 3, 'medium': 6, 'large': 10}.get(size, 6)
-                pattern_parts.append({
+
+            elif part_type == "oval":
+                base.update({
+                    "type": "oval",
+                    "max_stitches": {"tiny": 12, "small": 18, "medium": 24, "large": 30}[size],
+                    "height": {"tiny": 3, "small": 5, "medium": 7, "large": 10}[size],
+                })
+
+            elif part_type == "cylinder":
+                base.update({
                     "type": "cylinder",
-                    "name": part_name,
-                    "color": part['color'],
-                    "width": width,
-                    "height": height
+                    "width": {"tiny": 6, "small": 6, "medium": 12, "large": 18}[size],
+                    "height": {"tiny": 2, "small": 3, "medium": 6, "large": 10}[size],
                 })
-            
-            elif part_type == 'cone':
-                base = {'small': 8, 'medium': 12, 'large': 16}.get(size, 12)
-                height = {'small': 4, 'medium': 6, 'large': 8}.get(size, 6)
-                pattern_parts.append({
+
+            elif part_type == "cone":
+                base.update({
                     "type": "cone",
-                    "name": part_name,
-                    "color": part['color'],
-                    "base": base,
-                    "height": height
+                    "base": {"tiny": 6, "small": 8, "medium": 12, "large": 16}[size],
+                    "height": {"tiny": 2, "small": 4, "medium": 6, "large": 8}[size],
                 })
-            
-            elif part_type == 'flat_leaf':
-                length = {'small': 6, 'medium': 10, 'large': 15}.get(size, 10)
-                pattern_parts.append({
+
+            elif part_type == "dome":
+                base.update({
+                    "type": "dome",
+                    "max_stitches": {"tiny": 12, "small": 18, "medium": 24, "large": 36}[size],
+                })
+
+            elif part_type == "flat_circle":
+                base.update({
+                    "type": "flat_circle",
+                    "max_stitches": {"tiny": 12, "small": 18, "medium": 24, "large": 30}[size],
+                })
+
+            elif part_type == "flat_leaf":
+                base.update({
                     "type": "flat_leaf",
-                    "name": part_name,
-                    "color": part['color'],
-                    "length": length
+                    "length": {"tiny": 4, "small": 6, "medium": 10, "large": 15}[size],
                 })
-            
-            elif part_type == 'heart_leaf':
-                pattern_parts.append({
-                    "type": "heart_leaf",
-                    "name": part_name,
-                    "color": part['color'],
-                    "size": size
+
+            elif part_type == "tapered_tube":
+                base.update({
+                    "type": "tapered_tube",
+                    "start_width": {"tiny": 8, "small": 12, "medium": 16, "large": 24}[size],
+                    "end_width": 6,
+                    "height": {"tiny": 3, "small": 5, "medium": 8, "large": 12}[size],
                 })
-            
-            elif part_type == 'wing':
-                pattern_parts.append({
-                    "type": "wing",
-                    "name": part_name,
-                    "color": part['color'],
-                    "size": size
-                })
-            
-            elif part_type == 'petals':
-                num = {'small': 6, 'medium': 8, 'large': 12}.get(size, 6)
-                pattern_parts.append({
+
+            elif part_type == "fan":
+                base.update({"type": "fan", "size": size})
+
+            elif part_type == "bird_feet":
+                base.update({"type": "bird_feet", "size": size})
+
+            elif part_type == "heart_leaf":
+                base.update({"type": "heart_leaf", "size": size})
+
+            elif part_type == "wing":
+                base.update({"type": "wing", "size": size})
+
+            elif part_type == "petals":
+                base.update({
                     "type": "petals",
-                    "name": part_name,
-                    "color": part['color'],
-                    "num_petals": num,
-                    "attachment": "edge"
+                    "num_petals": {"tiny": 4, "small": 6, "medium": 8, "large": 12}[size],
+                    "attachment": "edge",
                 })
-            
-            elif part_type == 'spikes':
-                pattern_parts.append({
+
+            elif part_type == "spikes":
+                base.update({
                     "type": "spikes",
-                    "name": part_name,
-                    "color": part['color'],
-                    "num_spikes": count if count > 1 else 5
+                    "num_spikes": count if count > 1 else 5,
                 })
-        
+
+            elif part_type == "bobble":
+                base.update({"type": "bobble", "size": size})
+
+            else:
+                print(f"[Warning] Unknown shape '{part_type}' for '{part_name}', defaulting to sphere")
+                base.update({
+                    "type": "sphere",
+                    "max_stitches": 18,
+                    "height": 3,
+                })
+
+            pattern_parts.append(base)
+
         return pattern_parts
-    
-    def _create_fallback_pattern(self, description):
-        """Create a simple pattern if JSON parsing fails"""
-        print("Creating generic pattern with one body and two arms.")
-        return [
-            {"type": "sphere", "name": "Body", "color": "Unknown", "max_stitches": 24, "height": 6},
-            {"type": "cylinder", "name": "Arm (Make 2)", "color": "Unknown", "width": 6, "height": 4}
-        ]
+
+    def _create_fallback_pattern(self):
+        """Last resort if AI analysis fails completely."""
+        return [{
+            "type": "sphere",
+            "name": "Body",
+            "color": "Unknown",
+            "position": "center",
+            "max_stitches": 24,
+            "height": 6,
+        }]
 
 
-# Test function
 if __name__ == "__main__":
     import sys
-    
+
     if len(sys.argv) < 2:
-        print("Usage: python vision_analyzer.py <image_path>")
+        print("Usage: python vision_analyzer.py <image_path> [optional text]")
         sys.exit(1)
-    
+
     analyzer = VisionAnalyzer()
     image_path = sys.argv[1]
-    
-    pattern_data = analyzer.analyze_image(image_path)
-    
-    print("\n=== Generated Pattern Data ===")
-    print(json.dumps(pattern_data, indent=2))
+    user_text = sys.argv[2] if len(sys.argv) > 2 else None
+
+    result = analyzer.analyze(image_path, user_text)
+
+    if result:
+        print("\n=== Analysis Result ===")
+        print(f"Creature type: {result['creature_type']}")
+        print(f"Raw parts:\n{json.dumps(result['raw_parts'], indent=2)}")
+        print(f"Pattern data:\n{json.dumps(result['pattern_data'], indent=2)}")
+    else:
+        print("Analysis failed.")
