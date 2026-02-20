@@ -266,6 +266,18 @@
             font-size: 4em;
             margin-bottom: 20px;
         }
+        
+        .preview-error-detail {
+            font-size: 0.85em;
+            color: #c53030;
+            margin-top: 12px;
+            padding: 10px 14px;
+            background: #fef2f2;
+            border-radius: 8px;
+            text-align: left;
+            word-wrap: break-word;
+            max-width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -364,6 +376,12 @@
             }
         });
         
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
         function showImagePreview(file) {
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -410,8 +428,14 @@
                 });
                 
                 if (!analyzeResponse.ok) {
-                    const error = await analyzeResponse.json();
-                    throw new Error(error.error || 'Analysis failed');
+                    let errMsg = 'Analysis failed';
+                    try {
+                        const errBody = await analyzeResponse.json();
+                        errMsg = errBody.error || errMsg;
+                    } catch (_) {
+                        errMsg = 'Analysis failed (status ' + analyzeResponse.status + ')';
+                    }
+                    throw new Error(errMsg);
                 }
                 
                 const analyzeData = await analyzeResponse.json();
@@ -430,8 +454,14 @@
                 });
                 
                 if (!generateResponse.ok) {
-                    const error = await generateResponse.json();
-                    throw new Error(error.error || 'Generation failed');
+                    let errMsg = 'Generation failed';
+                    try {
+                        const errBody = await generateResponse.json();
+                        errMsg = errBody.error || errMsg;
+                    } catch (_) {
+                        errMsg = 'Generation failed (status ' + generateResponse.status + ')';
+                    }
+                    throw new Error(errMsg);
                 }
                 
                 const generateData = await generateResponse.json();
@@ -445,8 +475,9 @@
                 showSuccess('Pattern generated successfully!');
                 
             } catch (error) {
-                showError(error.message);
-                previewArea.innerHTML = '<div class="preview-empty"><div class="preview-empty-icon">❌</div><p>Failed to generate pattern</p></div>';
+                const msg = error.message || 'Unknown error';
+                showError(msg);
+                previewArea.innerHTML = '<div class="preview-empty"><div class="preview-empty-icon">❌</div><p>Failed to generate pattern</p><p class="preview-error-detail">' + escapeHtml(msg) + '</p></div>';
             } finally {
                 generateBtn.disabled = false;
                 generateBtn.textContent = '🎨 Generate Pattern';
