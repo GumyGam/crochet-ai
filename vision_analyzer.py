@@ -66,11 +66,13 @@ For EACH visible part, identify:
 6. position: where this attaches on the figure (e.g., "top of body", "sides of body", "front of head", "bottom center")
 
 CRITICAL RULES:
-- Include ALL visible parts, even tiny details (eyes, nose, beak, feet, markings)
+- You MUST list at least 3-5 parts. Most figures have a body, head, AND additional features.
+- Include ALL visible parts, even tiny details (eyes, nose, beak, feet, wings, tail, markings)
 - Do NOT invent parts you cannot see — only describe what is visible
 - Be precise about colors, noting stripes, patterns, or gradients
 - If head and body are one continuous piece, combine them as one part
-- "position" describes where this part connects for assembly"""
+- "position" describes where this part connects for assembly
+- Do NOT just say "Body" and "Head" — look carefully for wings, limbs, facial features, and details"""
 
         if user_text:
             prompt += f"""
@@ -83,12 +85,16 @@ USER INSTRUCTIONS (these override what you see):
 
         prompt += """
 
-Return ONLY valid JSON in this exact format (no markdown, no explanation):
+IMPORTANT: The example below is ONLY to show the JSON format.
+Do NOT copy the example values — analyze the ACTUAL image and describe what YOU see.
+Include ALL parts you can identify (body, head, eyes, beak, wings, tail, feet, accessories, etc.).
+
+Return ONLY valid JSON (no markdown, no explanation):
 {
-  "creature_type": "bird",
+  "creature_type": "<what this is>",
   "parts": [
-    {"type": "oval", "name": "Body", "color": "White", "size": "large", "count": 1, "position": "center"},
-    {"type": "sphere", "name": "Head", "color": "White with brown stripes", "size": "medium", "count": 1, "position": "top of body"}
+    {"type": "<shape>", "name": "<part name>", "color": "<exact color>", "size": "<tiny|small|medium|large>", "count": <number>, "position": "<where it attaches>"},
+    {"type": "<shape>", "name": "<another part>", "color": "<exact color>", "size": "<size>", "count": <number>, "position": "<position>"}
   ]
 }"""
 
@@ -199,8 +205,9 @@ Return ONLY valid JSON, no other text:
             except Exception as e:
                 print(f"[Round 2] Validation failed ({e}), keeping Round 1 result")
 
-        # ── Convert to pattern engine format ──
+        # ── Validate and convert to pattern engine format ──
         parts = analysis.get("parts", [])
+        parts = self._validate_parts(parts)
         pattern_data = self._convert_to_pattern_format(parts)
 
         return {
@@ -238,10 +245,73 @@ Return ONLY valid JSON, no other text:
 
         return None
 
+    def _clean_color(self, color, part_name):
+        """
+        Clean up AI color descriptions into usable yarn color names.
+
+        Handles two problems:
+        1. References to other body parts:
+           "Blue, with white on wings" → "Blue" (for a non-wing piece)
+        2. Narrative/descriptive phrases that aren't color names:
+           "White with black details and a small tuft at the tip" → "White with black"
+        """
+        if not color:
+            return "Unknown"
+
+        # Step 1: Remove references to OTHER body parts
+        other_parts = ["wing", "tail", "head", "body", "leg", "arm",
+                       "beak", "ear", "foot", "feet", "eye", "nose"]
+        part_name_lower = part_name.lower()
+        other_parts = [p for p in other_parts if p not in part_name_lower]
+
+        segments = [s.strip() for s in color.replace(";", ",").split(",")]
+        cleaned = []
+        for segment in segments:
+            mentions_other = any(part in segment.lower() for part in other_parts)
+            if not mentions_other:
+                cleaned.append(segment)
+
+        result = ", ".join(cleaned) if cleaned else color.split(",")[0].strip()
+
+        # Step 2: Cut off narrative/descriptive phrases that aren't color info.
+        # These are phrases the AI adds that describe texture, position, or shape
+        # rather than actual yarn color.
+        cutoff_phrases = [
+            " details", " and a small", " at the ", " on the ",
+            " matching ", " same as ", " similar to ",
+            " around the ", " along the ", " near the ",
+            " of the ", " from the ", " tuft",
+        ]
+        result_lower = result.lower()
+        earliest_cut = len(result)
+        for phrase in cutoff_phrases:
+            pos = result_lower.find(phrase)
+            if pos != -1 and pos < earliest_cut:
+                earliest_cut = pos
+
+        if earliest_cut < len(result):
+            result = result[:earliest_cut].strip().rstrip(",")
+
+        # Step 3: Remove dangling filler words left after cutting.
+        # E.g. "Orange with small" → "Orange" (the "with small" is incomplete)
+        dangling = ["with", "and", "a", "an", "the", "small", "large",
+                     "on", "in", "at", "for", "from", "to", "near"]
+        words = result.split()
+        while len(words) > 1 and words[-1].lower().rstrip(",") in dangling:
+            words.pop()
+        result = " ".join(words)
+
+        # Step 4: If still too long, truncate at last full word before 50 chars
+        if len(result) > 50:
+            result = result[:50].rsplit(" ", 1)[0]
+
+        return result if result else "Unknown"
+
     def _convert_to_pattern_format(self, parts):
         """
         Convert AI-detected parts into the format the pattern engine expects.
         Maps size labels (tiny/small/medium/large) to actual stitch counts.
+        Also auto-corrects common AI mistakes (e.g. eyes as cylinders).
         """
         pattern_parts = []
 
@@ -253,7 +323,22 @@ Return ONLY valid JSON, no other text:
             count = part.get("count", 1)
             part_type = part.get("type", "sphere")
             position = part.get("position", "")
-            color = part.get("color", "Unknown")
+            color = self._clean_color(part.get("color", "Unknown"), part.get("name", "Part"))
+
+            # Auto-correct eyes: the AI often picks oversized or wrong shapes.
+            #  - cylinder eyes → flat_circle (tubes don't look like eyes)
+            #  - sphere/oval eyes → flat_circle (3D balls are way too big)
+            #  - medium/large eyes → capped to small (eyes should be tiny/small)
+            name_lower = part.get("name", "").lower()
+            if "eye" in name_lower:
+                oversized_3d = part_type in ("sphere", "oval") and size in ("medium", "large")
+                wrong_shape = part_type == "cylinder"
+
+                if oversized_3d or wrong_shape:
+                    old_desc = f"{part_type}/{size}"
+                    part_type = "flat_circle"
+                    size = "small"
+                    print(f"[Auto-fix] Eye '{part.get('name')}': {old_desc} → flat_circle/small")
 
             part_name = part.get("name", "Part")
             if count > 1:
@@ -358,6 +443,39 @@ Return ONLY valid JSON, no other text:
             pattern_parts.append(base)
 
         return pattern_parts
+
+    def _validate_parts(self, parts):
+        """
+        Safety net: checks that essential parts exist.
+        If the AI forgot to include a body, we add a sensible default
+        so the pattern isn't missing its biggest piece.
+        """
+        body_keywords = {"body", "torso", "main body", "head & body", "head and body"}
+        has_body = any(
+            p.get("name", "").lower().split(" (make")[0].strip() in body_keywords
+            for p in parts
+        )
+
+        if not has_body and len(parts) > 0:
+            print("[Validate] No body part found — adding a default body")
+
+            biggest_size = "medium"
+            for p in parts:
+                if p.get("size") == "large":
+                    biggest_size = "large"
+                    break
+
+            default_body = {
+                "type": "oval",
+                "name": "Body",
+                "color": parts[0].get("color", "Unknown").split(" with ")[0],
+                "size": biggest_size,
+                "count": 1,
+                "position": "center",
+            }
+            parts.insert(0, default_body)
+
+        return parts
 
     def _create_fallback_pattern(self):
         """Last resort if AI analysis fails completely."""
