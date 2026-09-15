@@ -3,378 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crochet Pattern Generator</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
-
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0;
-            min-height: 600px;
-        }
-
-        .input-panel {
-            padding: 30px;
-            border-right: 2px solid #e0e0e0;
-            background: #f9f9f9;
-            overflow-y: auto;
-            max-height: 85vh;
-        }
-
-        .preview-panel {
-            padding: 30px;
-            overflow-y: auto;
-            max-height: 85vh;
-        }
-
-        .section { margin-bottom: 25px; }
-
-        .section-title {
-            font-size: 1.2em;
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: #333;
-        }
-
-        .upload-area {
-            border: 3px dashed #10b981;
-            border-radius: 15px;
-            padding: 40px 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: white;
-        }
-        .upload-area:hover { border-color: #059669; background: #f0fdf4; }
-        .upload-area.dragover { background: #dcfce7; border-color: #059669; }
-        .upload-icon { font-size: 3em; margin-bottom: 10px; }
-        input[type="file"] { display: none; }
-
-        textarea {
-            width: 100%;
-            padding: 15px;
-            border: 2px solid #ddd;
-            border-radius: 10px;
-            font-size: 1em;
-            resize: vertical;
-            min-height: 80px;
-            font-family: inherit;
-        }
-        textarea:focus { outline: none; border-color: #10b981; }
-
-        .settings {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 20px;
-        }
-        .setting-item { margin-bottom: 15px; }
-        .setting-item label { display: block; margin-bottom: 5px; font-weight: 500; color: #555; }
-
-        input[type="text"], select {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 1em;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            font-size: 1.1em;
-            border-radius: 10px;
-            cursor: pointer;
-            width: 100%;
-            font-weight: 600;
-            transition: transform 0.2s;
-        }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-        .btn-secondary { background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); margin-top: 15px; }
-        .btn-download { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); margin-top: 15px; }
-
-        /* ── Review Panel Styles ── */
-        .review-section {
-            display: none;
-            margin-top: 25px;
-            border-top: 2px solid #e0e0e0;
-            padding-top: 25px;
-        }
-        .review-section.visible { display: block; }
-
-        .creature-badge {
-            display: inline-block;
-            background: #ecfdf5;
-            color: #059669;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-weight: 600;
-            font-size: 0.95em;
-            margin-bottom: 15px;
-            border: 1px solid #a7f3d0;
-        }
-
-        .part-card {
-            background: white;
-            border: 1px solid #e0e0e0;
-            border-radius: 10px;
-            padding: 12px 15px;
-            margin-bottom: 10px;
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 10px;
-            align-items: center;
-        }
-        .part-card:hover { border-color: #10b981; }
-
-        .part-info { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-        .part-name { font-weight: 600; color: #333; }
-        .part-tag {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.8em;
-            font-weight: 500;
-        }
-        .tag-shape { background: #dbeafe; color: #1d4ed8; }
-        .tag-color { background: #fef3c7; color: #92400e; }
-        .tag-size { background: #e0e7ff; color: #3730a3; }
-        .tag-position { background: #f3e8ff; color: #6b21a8; }
-
-        .part-actions { display: flex; gap: 5px; }
-        .btn-icon {
-            background: none;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 6px 10px;
-            cursor: pointer;
-            font-size: 0.85em;
-            transition: all 0.2s;
-        }
-        .btn-icon:hover { background: #f3f4f6; }
-        .btn-icon.remove:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
-
-        .review-hint {
-            font-size: 0.85em;
-            color: #666;
-            margin-bottom: 15px;
-            padding: 10px;
-            background: #fffbeb;
-            border-radius: 8px;
-            border: 1px solid #fde68a;
-        }
-
-        /* ── Edit Modal ── */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-        .modal-overlay.visible { display: flex; }
-        .modal {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            width: 420px;
-            max-width: 90vw;
-        }
-        .modal h3 { margin-bottom: 20px; color: #333; }
-        .modal label { display: block; margin-bottom: 4px; font-weight: 500; color: #555; font-size: 0.9em; }
-        .modal input, .modal select {
-            width: 100%;
-            padding: 8px 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 1em;
-            margin-bottom: 12px;
-        }
-        .modal-buttons { display: flex; gap: 10px; margin-top: 10px; }
-        .modal-buttons .btn { flex: 1; padding: 10px; font-size: 1em; }
-        .btn-cancel { background: #e5e7eb; color: #333; }
-        .btn-cancel:hover { background: #d1d5db; transform: none; box-shadow: none; }
-
-        /* ── Pattern Preview ── */
-        .preview-content {
-            background: #f9f9f9;
-            padding: 25px;
-            border-radius: 10px;
-            border: 1px solid #ddd;
-            font-size: 0.9em;
-        }
-        .preview-content h1 { font-size: 1.4em; margin-bottom: 15px; }
-        .preview-content h2 { color: #10b981; margin-top: 20px; margin-bottom: 10px; font-size: 1.2em; }
-        .preview-content h3 { color: #059669; margin-top: 15px; margin-bottom: 8px; font-size: 1em; }
-        .preview-content p { line-height: 1.6; margin-bottom: 8px; font-size: 0.85em; }
-        .preview-content strong { color: #333; font-size: 0.9em; }
-        .preview-content li { font-size: 0.85em; line-height: 1.5; }
-
-        .loading { text-align: center; padding: 40px; color: #10b981; }
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #10b981;
-            border-radius: 50%;
-            width: 50px; height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        .error { background: #ff4444; color: white; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
-        .success { background: #28a745; color: white; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
-
-        .preview-empty { text-align: center; color: #999; padding: 60px 20px; }
-        .preview-empty-icon { font-size: 4em; margin-bottom: 20px; }
-        .preview-error-detail {
-            font-size: 0.85em; color: #c53030; margin-top: 12px;
-            padding: 10px 14px; background: #fef2f2; border-radius: 8px;
-            text-align: left; word-wrap: break-word;
-        }
-    </style>
+    <title>Crochet — pattern desk</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;650&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='studio.css') }}">
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>Crochet Pattern Generator</h1>
-            <p>Upload an image and add details to create your custom crochet pattern</p>
-        </div>
+    <div class="page">
+        <header class="masthead">
+            <div>
+                <p class="kicker">Local · Ollama</p>
+                <h1>Crochet</h1>
+                <p class="lede">A photo or a few words in. A beginner pattern out. Nothing leaves your machine.</p>
+            </div>
+        </header>
 
-        <div class="main-content">
-            <!-- ═══ LEFT PANEL ═══ -->
+        <div class="desk">
             <div class="input-panel">
-                <!-- Step 1: Upload & Describe -->
                 <div class="section">
-                    <div class="section-title">1. Upload Image</div>
+                    <span class="step-num">01</span>
+                    <div class="section-title">Image</div>
                     <div class="upload-area" id="uploadArea">
-                        <div class="upload-icon">📁</div>
-                        <p><strong>Click to upload</strong> or drag and drop</p>
-                        <p style="font-size: 0.9em; color: #666;">PNG, JPG, JPEG, GIF (max 16MB)</p>
+                        <div class="upload-mark">Drop a photo</div>
+                        <p>or click to choose</p>
+                        <p class="hint">PNG, JPG, GIF · max 16MB</p>
                         <input type="file" id="imageInput" accept="image/*">
                     </div>
-                    <div id="imagePreview" style="margin-top: 15px; text-align: center;"></div>
+                    <div id="imagePreview"></div>
                 </div>
 
                 <div class="section">
-                    <div class="section-title">2. Add Details (Optional)</div>
-                    <textarea id="promptInput" placeholder="Describe what you want: colors, features, what to include or ignore..."></textarea>
-                    <p style="font-size: 0.85em; color: #666; margin-top: 8px;">
-                        Your text overrides the image. Say "just the bird, not the branch" to exclude parts.
-                    </p>
+                    <span class="step-num">02</span>
+                    <div class="section-title">Notes (optional)</div>
+                    <textarea id="promptInput" placeholder="Colors, parts to keep or skip… “just the bird, not the branch.”"></textarea>
+                    <p class="hint">Text overrides the photo when they disagree.</p>
                 </div>
 
-                <button class="btn" id="analyzeBtn" onclick="analyzeInput()">
-                    🔍 Analyze
-                </button>
+                <button class="btn" id="analyzeBtn" onclick="analyzeInput()">Analyze</button>
 
-                <!-- Step 2: Review Detected Parts (hidden until analysis) -->
                 <div class="review-section" id="reviewSection">
-                    <div class="section-title">3. Review Detected Parts</div>
+                    <span class="step-num">03</span>
+                    <div class="section-title">Review parts</div>
                     <div id="creatureType"></div>
                     <div class="review-hint">
-                        Review what the AI detected below. You can edit, remove, or add parts before generating.
+                        Edit, remove, or add parts before you generate. This is the last chance to steer the pattern.
                     </div>
                     <div id="partsList"></div>
-                    <button class="btn-icon" style="width:100%; padding:10px; margin-bottom:15px; border:2px dashed #10b981; color:#10b981; font-weight:600;" onclick="addNewPart()">
-                        + Add Part
-                    </button>
+                    <button class="btn btn-ghost" onclick="addNewPart()">Add a part</button>
 
                     <div class="section">
-                        <div class="section-title">4. Settings</div>
+                        <span class="step-num">04</span>
+                        <div class="section-title">Name</div>
                         <div class="settings">
                             <div class="setting-item">
-                                <label>Pattern Name</label>
+                                <label for="patternName">Pattern name</label>
                                 <input type="text" id="patternName" value="My_Custom_Pattern">
                             </div>
                         </div>
                     </div>
 
-                    <button class="btn" id="generateBtn" onclick="generatePattern()">
-                        🧶 Generate Pattern
-                    </button>
-
-                    <button class="btn btn-download" id="downloadBtn" onclick="downloadPDF()" style="display: none;">
-                        📥 Download PDF
-                    </button>
+                    <button class="btn" id="generateBtn" onclick="generatePattern()">Generate pattern</button>
+                    <button class="btn btn-download" id="downloadBtn" onclick="downloadPDF()" style="display: none;">Download PDF</button>
                 </div>
             </div>
 
-            <!-- ═══ RIGHT PANEL ═══ -->
             <div class="preview-panel">
-                <div class="section-title">Pattern Preview</div>
+                <span class="step-num">Preview</span>
+                <div class="section-title">Pattern</div>
                 <div id="previewArea">
                     <div class="preview-empty">
-                        <div class="preview-empty-icon">📝</div>
-                        <p>Your pattern will appear here</p>
-                        <p style="font-size: 0.9em; margin-top: 10px;">Upload an image or enter a description, then click Analyze</p>
+                        <div class="preview-empty-icon">Aa</div>
+                        <p>Your pattern will land here — materials, abbreviations, and round-by-round instructions.</p>
+                        <p class="hint">Add a photo or a description, then analyze.</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Edit Part Modal -->
     <div class="modal-overlay" id="editModal">
         <div class="modal">
-            <h3 id="modalTitle">Edit Part</h3>
+            <h3 id="modalTitle">Edit part</h3>
             <input type="hidden" id="editIndex">
 
-            <label>Part Name</label>
-            <input type="text" id="editName" placeholder="e.g. Body, Wing, Beak">
+            <label for="editName">Part name</label>
+            <input type="text" id="editName" placeholder="Body, wing, beak">
 
-            <label>Shape</label>
+            <label for="editType">Shape</label>
             <select id="editType">
                 <option value="sphere">Sphere (round ball)</option>
                 <option value="oval">Oval (egg shape)</option>
                 <option value="cylinder">Cylinder (tube)</option>
                 <option value="cone">Cone (pointy)</option>
                 <option value="dome">Dome (half-sphere)</option>
-                <option value="flat_circle">Flat Circle (disc)</option>
-                <option value="flat_leaf">Flat Leaf/Strip</option>
-                <option value="tapered_tube">Tapered Tube (tail)</option>
-                <option value="fan">Fan (spread shape)</option>
-                <option value="bird_feet">Bird Feet</option>
-                <option value="heart_leaf">Heart Leaf</option>
+                <option value="flat_circle">Flat circle (disc)</option>
+                <option value="flat_leaf">Flat leaf / strip</option>
+                <option value="tapered_tube">Tapered tube (tail)</option>
+                <option value="fan">Fan</option>
+                <option value="bird_feet">Bird feet</option>
+                <option value="heart_leaf">Heart leaf</option>
                 <option value="wing">Wing (triangle)</option>
                 <option value="petals">Petals</option>
                 <option value="spikes">Spikes</option>
-                <option value="bobble">Bobble (bump)</option>
+                <option value="bobble">Bobble</option>
             </select>
 
-            <label>Color</label>
-            <input type="text" id="editColor" placeholder="e.g. White, Blue with stripes">
+            <label for="editColor">Color</label>
+            <input type="text" id="editColor" placeholder="White, blue with stripes">
 
-            <label>Size</label>
+            <label for="editSize">Size</label>
             <select id="editSize">
                 <option value="tiny">Tiny</option>
                 <option value="small">Small</option>
@@ -382,11 +120,11 @@
                 <option value="large">Large</option>
             </select>
 
-            <label>Count (how many to make)</label>
+            <label for="editCount">Count</label>
             <input type="text" id="editCount" placeholder="1">
 
-            <label>Position (where to attach)</label>
-            <input type="text" id="editPosition" placeholder="e.g. top of body, sides of body">
+            <label for="editPosition">Position</label>
+            <input type="text" id="editPosition" placeholder="top of body, sides of body">
 
             <div class="modal-buttons">
                 <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
@@ -401,7 +139,6 @@
         let currentRawParts = [];
         let currentCreatureType = '';
 
-        // ── Upload / Drag-drop ──
         const uploadArea = document.getElementById('uploadArea');
         const imageInput = document.getElementById('imageInput');
 
@@ -430,18 +167,17 @@
             const reader = new FileReader();
             reader.onload = (e) => {
                 document.getElementById('imagePreview').innerHTML =
-                    `<img src="${e.target.result}" style="max-width: 100%; max-height: 200px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">`;
+                    `<img src="${e.target.result}" alt="Upload preview">`;
             };
             reader.readAsDataURL(file);
         }
 
-        // ── STEP 1: Analyze ──
         async function analyzeInput() {
             const imageFile = imageInput.files[0];
             const promptText = document.getElementById('promptInput').value.trim();
 
             if (!imageFile && !promptText) {
-                showError('Please upload an image and/or enter a description');
+                showError('Upload an image and/or enter a description');
                 return;
             }
 
@@ -449,9 +185,9 @@
             const previewArea = document.getElementById('previewArea');
 
             analyzeBtn.disabled = true;
-            analyzeBtn.textContent = '⏳ Analyzing (this may take a minute)...';
+            analyzeBtn.textContent = 'Analyzing… this can take a minute';
             document.getElementById('reviewSection').classList.remove('visible');
-            previewArea.innerHTML = '<div class="loading"><div class="spinner"></div><p>AI is analyzing your input (Round 1 + self-check)...</p></div>';
+            previewArea.innerHTML = '<div class="loading"><div class="spinner"></div><p>Reading the image (pass + self-check)…</p></div>';
 
             try {
                 const formData = new FormData();
@@ -473,18 +209,17 @@
                 currentPatternData = data.pattern_data || [];
 
                 renderReviewPanel();
-                previewArea.innerHTML = '<div class="preview-empty"><div class="preview-empty-icon">👇</div><p>Review the parts on the left, then click "Generate Pattern"</p></div>';
+                previewArea.innerHTML = '<div class="preview-empty"><div class="preview-empty-icon">→</div><p>Review the parts on the left, then generate.</p></div>';
 
             } catch (error) {
                 showError(error.message || 'Unknown error');
-                previewArea.innerHTML = '<div class="preview-empty"><div class="preview-empty-icon">❌</div><p>Analysis failed</p><p class="preview-error-detail">' + escapeHtml(error.message) + '</p></div>';
+                previewArea.innerHTML = '<div class="preview-empty"><div class="preview-empty-icon">!</div><p>Analysis failed</p><p class="preview-error-detail">' + escapeHtml(error.message) + '</p></div>';
             } finally {
                 analyzeBtn.disabled = false;
-                analyzeBtn.textContent = '🔍 Analyze';
+                analyzeBtn.textContent = 'Analyze';
             }
         }
 
-        // ── Render the review panel with detected parts ──
         function renderReviewPanel() {
             const reviewSection = document.getElementById('reviewSection');
             const creatureEl = document.getElementById('creatureType');
@@ -503,15 +238,15 @@
 
                 html += `<div class="part-card" id="part-${i}">
                     <div class="part-info">
-                        <span class="part-name">${escapeHtml(name)}${count > 1 ? ' (x' + count + ')' : ''}</span>
+                        <span class="part-name">${escapeHtml(name)}${count > 1 ? ' (×' + count + ')' : ''}</span>
                         <span class="part-tag tag-shape">${escapeHtml(type)}</span>
                         <span class="part-tag tag-color">${escapeHtml(color)}</span>
                         <span class="part-tag tag-size">${escapeHtml(size)}</span>
                         ${position ? '<span class="part-tag tag-position">' + escapeHtml(position) + '</span>' : ''}
                     </div>
                     <div class="part-actions">
-                        <button class="btn-icon" onclick="editPart(${i})" title="Edit">✏️</button>
-                        <button class="btn-icon remove" onclick="removePart(${i})" title="Remove">🗑️</button>
+                        <button class="btn-icon" onclick="editPart(${i})" title="Edit">Edit</button>
+                        <button class="btn-icon remove" onclick="removePart(${i})" title="Remove">Remove</button>
                     </div>
                 </div>`;
             });
@@ -520,7 +255,6 @@
             reviewSection.classList.add('visible');
         }
 
-        // ── Edit / Remove / Add parts ──
         function editPart(index) {
             const part = currentRawParts[index];
             document.getElementById('editIndex').value = index;
@@ -530,7 +264,7 @@
             document.getElementById('editSize').value = part.size || 'medium';
             document.getElementById('editCount').value = part.count || 1;
             document.getElementById('editPosition').value = part.position || '';
-            document.getElementById('modalTitle').textContent = 'Edit Part';
+            document.getElementById('modalTitle').textContent = 'Edit part';
             document.getElementById('editModal').classList.add('visible');
         }
 
@@ -542,7 +276,7 @@
             document.getElementById('editSize').value = 'medium';
             document.getElementById('editCount').value = 1;
             document.getElementById('editPosition').value = '';
-            document.getElementById('modalTitle').textContent = 'Add New Part';
+            document.getElementById('modalTitle').textContent = 'Add part';
             document.getElementById('editModal').classList.add('visible');
         }
 
@@ -579,18 +313,9 @@
         }
 
         function rebuildPatternData() {
-            /* Re-convert raw parts to pattern_data using the same size->stitch mapping
-               that the backend uses. We send raw_parts to /api/generate and let it
-               re-convert, OR we rebuild locally. For simplicity we'll re-send to analyze
-               endpoint... actually, we'll just send the raw parts to generate and have
-               the backend re-convert them. */
-            // We'll handle this in generatePattern() by sending raw_parts to a
-            // re-convert endpoint, or by doing the conversion client-side.
-            // For now, we set a flag that pattern_data needs rebuilding.
             currentPatternData = null;
         }
 
-        // ── STEP 2: Generate Pattern ──
         async function generatePattern() {
             const patternName = document.getElementById('patternName').value.trim();
             const generateBtn = document.getElementById('generateBtn');
@@ -598,12 +323,11 @@
             const previewArea = document.getElementById('previewArea');
 
             generateBtn.disabled = true;
-            generateBtn.textContent = '⏳ Generating pattern...';
+            generateBtn.textContent = 'Writing pattern…';
             downloadBtn.style.display = 'none';
-            previewArea.innerHTML = '<div class="loading"><div class="spinner"></div><p>Creating your pattern...</p></div>';
+            previewArea.innerHTML = '<div class="loading"><div class="spinner"></div><p>Writing rounds and assembly…</p></div>';
 
             try {
-                // Send raw_parts to a convert+generate endpoint
                 const resp = await fetch('/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -624,14 +348,14 @@
                 previewArea.innerHTML = `<div class="preview-content">${data.preview}</div>`;
                 currentPdfUrl = data.pdf_url;
                 downloadBtn.style.display = 'block';
-                showSuccess('Pattern generated successfully!');
+                showSuccess('Pattern ready.');
 
             } catch (error) {
                 showError(error.message || 'Unknown error');
-                previewArea.innerHTML = '<div class="preview-empty"><div class="preview-empty-icon">❌</div><p>Generation failed</p><p class="preview-error-detail">' + escapeHtml(error.message) + '</p></div>';
+                previewArea.innerHTML = '<div class="preview-empty"><div class="preview-empty-icon">!</div><p>Generation failed</p><p class="preview-error-detail">' + escapeHtml(error.message) + '</p></div>';
             } finally {
                 generateBtn.disabled = false;
-                generateBtn.textContent = '🧶 Generate Pattern';
+                generateBtn.textContent = 'Generate pattern';
             }
         }
 
@@ -643,7 +367,7 @@
             const area = document.getElementById('previewArea');
             const el = document.createElement('div');
             el.className = 'error';
-            el.textContent = '❌ ' + message;
+            el.textContent = message;
             area.insertBefore(el, area.firstChild);
             setTimeout(() => el.remove(), 5000);
         }
@@ -652,7 +376,7 @@
             const area = document.getElementById('previewArea');
             const el = document.createElement('div');
             el.className = 'success';
-            el.textContent = '✅ ' + message;
+            el.textContent = message;
             area.insertBefore(el, area.firstChild);
             setTimeout(() => el.remove(), 5000);
         }

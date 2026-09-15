@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crochet — photo to beginner pattern</title>
+    <meta name="description" content="Turn a photo into a beginner crochet pattern. Local AI, no cloud, PDF out.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;650&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="studio.css">
+</head>
+<body>
+    <div class="site-wrap">
+        <p class="kicker">Personal project · local AI</p>
+        <section class="hero">
+            <h1>A photo in.<br>A pattern out.</h1>
+            <p class="lede">Crochet turns an amigurumi picture — or a text description — into a beginner pattern with US terms, stitch counts, and a PDF. It runs on your machine. No API bill.</p>
+            <div class="hero-actions">
+                <a class="btn btn-inline" href="https://github.com/GumyGam/crochet-ai#quick-start">Install &amp; run</a>
+                <a class="btn btn-inline btn-outline" href="https://github.com/GumyGam/crochet-ai">Open the repo</a>
+            </div>
+        </section>
+
+        <hr class="stitch">
+
+        <section>
+            <p class="kicker">How it works</p>
+            <div class="steps" style="margin-top: 18px;">
+                <div class="step">
+                    <p class="kicker">01</p>
+                    <h3>Look</h3>
+                    <p>Local vision (Ollama + llava) reads the photo and names the parts: body, ears, wings, leaves.</p>
+                </div>
+                <div class="step">
+                    <p class="kicker">02</p>
+                    <h3>Steer</h3>
+                    <p>You review every part — edit shape, color, count — before anything is written.</p>
+                </div>
+                <div class="step">
+                    <p class="kicker">03</p>
+                    <h3>Write</h3>
+                    <p>The engine lays out rounds, materials, and assembly, then saves a printable PDF.</p>
+                </div>
+            </div>
+        </section>
+
+        <hr class="stitch">
+
+        <section>
+            <p class="kicker">The desk</p>
+            <h2 class="display" style="font-size: 2rem; margin: 8px 0 18px;">Two columns. Photo on the left. Pattern on the right.</h2>
+            <div class="mock" aria-hidden="true">
+                <div class="mock-col">
+                    <p class="kicker">Image</p>
+                    <div class="mock-line wool"></div>
+                    <div class="mock-line"></div>
+                    <div class="mock-line short"></div>
+                    <p class="kicker" style="margin-top: 18px;">Notes</p>
+                    <div class="mock-line"></div>
+                    <div class="mock-line short"></div>
+                </div>
+                <div class="mock-col">
+                    <p class="kicker">Pattern</p>
+                    <p style="font-family: var(--font-display); font-size: 1.5rem; margin: 8px 0 12px;">Little bird</p>
+                    <div class="mock-line"></div>
+                    <div class="mock-line"></div>
+                    <div class="mock-line short"></div>
+                    <div class="mock-line"></div>
+                    <div class="mock-line short"></div>
+                </div>
+            </div>
+            <p class="hint" style="margin-top: 14px;">This page is the product face. The live generator runs locally after install — it needs Ollama, so it is not hosted here.</p>
+        </section>
+
+        <hr class="stitch">
+
+        <section class="install">
+            <p class="kicker">Install</p>
+            <h2 class="display" style="font-size: 2rem; margin: 8px 0 12px;">Anyone with the repo can run it</h2>
+            <p style="margin-bottom: 16px; max-width: 52ch;">Python 3.10+, <a href="https://ollama.com">Ollama</a>, and the llava model. Full steps live in the README — this is the short path.</p>
+<pre><code>git clone https://github.com/GumyGam/crochet-ai.git
+cd crochet-ai
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+ollama pull llava
+python3 app.py</code></pre>
+            <p class="hint" style="margin-top: 12px;">Then open <strong>http://localhost:5001</strong>. CLI: <code>python3 image_to_pattern.py photo.jpg "Name"</code></p>
+        </section>
+
+        <p class="footer">Amir Gam · personal project · <a href="https://github.com/GumyGam/crochet-ai">github.com/GumyGam/crochet-ai</a></p>
+    </div>
+</body>
+</html>

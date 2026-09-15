@@ -177,10 +177,7 @@ def markdown_to_html(markdown_text):
     return '\n'.join(result)
 
 if __name__ == '__main__':
-    print("\n" + "="*60)
-    print("🧶 CROCHET PATTERN GENERATOR - Web Interface")
-    print("="*60)
-    print("\n✅ Server starting...")
-    print("📱 Open your browser to: http://localhost:5001")
-    print("\nPress Ctrl+C to stop the server\n")
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    print("\nCrochet pattern desk")
+    print("Open http://localhost:5001")
+    print("Ctrl+C to stop\n")
+    app.run(debug=False, host='127.0.0.1', port=5001)
